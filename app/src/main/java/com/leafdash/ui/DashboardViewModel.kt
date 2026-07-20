@@ -31,6 +31,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private var sessionJob: Job? = null
     private var collectJob: Job? = null
     private var samples = 0
+    private var lastLeaf = com.leafdash.can.LeafState()   // retained across reconnects
 
     @Volatile private var unitsMiles = false
 
@@ -80,7 +81,11 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                         t.onSample(ps.leaf.kwhRemaining, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
                     }
+                    // keep last known values through connecting/reconnect (empty leaf)
+                    val leaf = if (ps.leaf == com.leafdash.can.LeafState()) lastLeaf else ps.leaf
+                    lastLeaf = leaf
                     _state.value = ps.copy(
+                        leaf = leaf,
                         lastCharge = t.lastCharge.copy(),
                         carOn = t.carOn.copy(),
                         trip = t.trip.copy(),
@@ -97,6 +102,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         autoReconnect = false      // manual disconnect stops auto-retry
         poller?.stop()
         collectJob?.cancel()
+        // keep last data on screen, but reflect disconnected status
+        _state.value = _state.value.copy(connected = false, connecting = false)
         tracker?.let { t -> viewModelScope.launch { tripStore.save(t.snapshot()) } }
     }
 
