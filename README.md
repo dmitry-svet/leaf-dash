@@ -22,19 +22,14 @@ Not yet: SOH %, pack Ah, cell voltages (need active ISO-TP queries — phase 2).
 
 ### Command line (no Android Studio)
 
-Toolchain already installed on this machine:
+Requirements: a JDK 17 and the Android SDK. Point at them via `JAVA_HOME` and a
+`local.properties` with `sdk.dir=/path/to/android-sdk` (or `ANDROID_HOME`).
 
-- JDK 17: `~/tools/jdk-17.0.19+10`
-- Gradle 8.9: `~/tools/gradle-8.9`
-- Android SDK: `~/android-sdk` (platform-34, build-tools 34.0.0, platform-tools)
-- `local.properties` points at the SDK.
-
-Build the debug APK and run tests:
+Build the debug APK and run tests with the bundled wrapper:
 
 ```
-export JAVA_HOME=~/tools/jdk-17.0.19+10
-export ANDROID_HOME=~/android-sdk
-~/tools/gradle-8.9/bin/gradle --no-daemon :app:assembleDebug testDebugUnitTest
+export JAVA_HOME=/path/to/jdk-17
+./gradlew :app:assembleDebug testDebugUnitTest
 ```
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`
