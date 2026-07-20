@@ -15,12 +15,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.leafdash.BuildConfig
 import com.leafdash.poll.DashState
@@ -54,28 +56,33 @@ fun DashboardScreen(
             state.connected -> Color(0xFF2E7D32)    // green
             else -> Color(0xFFC62828)               // red
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
-                "$status   v${BuildConfig.VERSION_NAME}",
+                "$status  v${BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = statusColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-            if (state.connecting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            if (state.connecting) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            if (state.connected || state.connecting) {
+                TextButton(onClick = onDisconnect) { Text("Disconnect") }
+            } else {
+                Button(onClick = onConnect) { Text("Connect") }
+                TextButton(onClick = onDemo) { Text("Demo") }
+            }
+            TextButton(onClick = onToggleUnits) {
+                Text(if (state.odoMiles) "mi" else "km")
+            }
         }
         if (state.connecting && state.connectMsg != null) {
             Text(state.connectMsg, style = MaterialTheme.typography.bodyMedium)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (state.connected || state.connecting) {
-                OutlinedButton(onClick = onDisconnect) { Text("Disconnect") }
-            } else {
-                Button(onClick = onConnect) { Text("Connect") }
-                OutlinedButton(onClick = onDemo) { Text("Demo") }
-            }
-            OutlinedButton(onClick = onToggleUnits) {
-                Text("Odo: " + if (state.odoMiles) "mi" else "km")
-            }
         }
 
         // live tiles
@@ -108,6 +115,7 @@ fun DashboardScreen(
         // (lots of km), else the smoothed lifetime average
         val refEff = state.lastCharge.kwhPer100?.takeIf { state.lastCharge.km >= 5.0 }
             ?: state.avgKwhPer100
+        TripCard("Lifetime", state.lifetime, leaf.kwhRemaining, refEff)
         TripCard("Since last charge", state.lastCharge, leaf.kwhRemaining, refEff)
         TripCard("Since car on", state.carOn, leaf.kwhRemaining, refEff)
         TripCard("Trip", state.trip, leaf.kwhRemaining, refEff)

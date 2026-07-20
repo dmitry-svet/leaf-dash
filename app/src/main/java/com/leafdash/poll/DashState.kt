@@ -9,6 +9,7 @@ data class DashState(
     val lastCharge: TripWindow = TripWindow(),
     val carOn: TripWindow = TripWindow(),
     val trip: TripWindow = TripWindow(),
+    val lifetime: TripWindow = TripWindow(),
     val connected: Boolean = false,
     val connecting: Boolean = false,
     val connectMsg: String? = null,

@@ -1,0 +1,42 @@
+{
+  "env": {
+    "JAVA_HOME": "/home/svet/tools/jdk-17.0.19+10",
+    "ANDROID_HOME": "/home/svet/android-sdk"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(/home/svet/tools/gradle-8.9/bin/gradle:*)",
+      "Bash(unzip -l LeafSpy_Pro_0.52.180_ru.apk)",
+      "Bash(unzip -o -q /home/svet/repo/leaf_dash/LeafSpy_Pro_0.52.180_ru.apk -d apk)",
+      "Bash(python3 *)",
+      "Bash(timeout 8 curl -sI https://dl.google.com)",
+      "Bash(sudo -n true)",
+      "Bash(curl -# -L -o gradle.zip \"https://services.gradle.org/distributions/gradle-8.9-bin.zip\")",
+      "Bash(unzip -t gradle.zip)",
+      "Bash(unzip -t cmdtools.zip)",
+      "Bash(~/android-sdk/platform-tools/adb devices *)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:www.diyelectriccar.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:tollbit.diyelectriccar.com)",
+      "WebFetch(domain:mynissanleaf.com)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/openvehicles/Open-Vehicle-Monitoring-System-3/master/vehicle/OVMS.V3/components/vehicle_nissanleaf/src/vehicle_nissanleaf.h\" -o ovms.h)",
+      "WebFetch(domain:leaf-obd.readthedocs.io)",
+      "Read(//tmp/**)",
+      "Bash(pip download *)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/openvehicles/Open-Vehicle-Monitoring-System-3/master/vehicle/OVMS.V3/components/vehicle_nissanleaf/src/vehicle_nissanleaf.cpp\" -o ovms_leaf.cpp)",
+      "WebFetch(domain:leafspy.com)",
+      "WebFetch(domain:docs.openvehicles.com)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/pbutterworth/py-nissan-leaf-obd-ble/main/py_nissan_leaf_obd_ble/commands.py\" -o /tmp/cmds.py)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/pbutterworth/py-nissan-leaf-obd-ble/main/src/py_nissan_leaf_obd_ble/decoders.py\" -o /tmp/dec.py)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/pbutterworth/py-nissan-leaf-obd-ble/main/README.md\")",
+      "Bash(curl -s \"https://api.github.com/repos/pbutterworth/py-nissan-leaf-obd-ble\")",
+      "Skill(update-config)",
+      "Bash(/home/svet/tools/gradle-8.9/bin/gradle --no-daemon :app:assembleDebug testDebugUnitTest)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'Add Lifetime economy summary + move controls next to status *)",
+      "Bash(git push *)"
+    ]
+  }
+}

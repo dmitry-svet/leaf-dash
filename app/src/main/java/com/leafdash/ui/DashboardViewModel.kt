@@ -89,6 +89,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                         lastCharge = t.lastCharge.copy(),
                         carOn = t.carOn.copy(),
                         trip = t.trip.copy(),
+                        lifetime = t.lifetime.copy(),
                         odoMiles = unitsMiles,
                         avgKwhPer100 = t.avgKwhPer100,
                     )

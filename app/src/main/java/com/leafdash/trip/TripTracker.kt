@@ -31,6 +31,9 @@ data class TripSnapshot(
     val chargeMinSoc: Double? = null,
     /** Smoothed lifetime efficiency (kWh/100 km) for stable range estimates. */
     val emaEff: Double = 15.0,
+    /** All-time totals (never reset). */
+    val lifetimeStartOdo: Double? = null,
+    val lifetimeKwh: Double = 0.0,
 )
 
 /**
@@ -51,10 +54,12 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
     val lastCharge = TripWindow(kwh = snapshot.lcKwh)
     val carOn = TripWindow()
     val trip = TripWindow(kwh = snapshot.tripKwh)
+    val lifetime = TripWindow(kwh = snapshot.lifetimeKwh)
 
     private var lcStartOdo: Double? = snapshot.lcStartOdo
     private var coStartOdo: Double? = null
     private var tripStartOdo: Double? = snapshot.tripStartOdo
+    private var lifetimeStartOdo: Double? = snapshot.lifetimeStartOdo
     private var curOdo: Double? = null
     private var prevOdo: Double? = null
     private var prevKwh: Double? = null
@@ -81,11 +86,13 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
         if (lcStartOdo == null) lcStartOdo = cumKm
         if (coStartOdo == null) coStartOdo = cumKm
         if (tripStartOdo == null) tripStartOdo = cumKm
+        if (lifetimeStartOdo == null) lifetimeStartOdo = cumKm
 
         // distance from odometer endpoints (monotonic, gap-proof)
         lastCharge.km = (cumKm - lcStartOdo!!).coerceAtLeast(0.0)
         carOn.km = (cumKm - coStartOdo!!).coerceAtLeast(0.0)
         trip.km = (cumKm - tripStartOdo!!).coerceAtLeast(0.0)
+        lifetime.km = (cumKm - lifetimeStartOdo!!).coerceAtLeast(0.0)
 
         // energy: summed drop in kWh remaining, counted ONLY while actually
         // moving (speed >= MOVE_SPEED). Skipping stationary samples excludes
@@ -99,6 +106,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                 lastCharge.kwh += dKwh
                 carOn.kwh += dKwh
                 trip.kwh += dKwh
+                lifetime.kwh += dKwh
                 if (pOdo != null) {
                     val dKm = cumKm - pOdo
                     if (dKm in 0.005..MAX_JUMP) {
@@ -132,6 +140,8 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
         tripKwh = trip.kwh,
         chargeMinSoc = chargeMinSoc,
         emaEff = avgKwhPer100,
+        lifetimeStartOdo = lifetimeStartOdo,
+        lifetimeKwh = lifetime.kwh,
     )
 
     private companion object {
