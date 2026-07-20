@@ -37,8 +37,9 @@ class LeafPoller(
     private var odoDisplayKm: Double? = null  // odometer in km (unit applied)
     private var distanceKm: Double? = null    // smooth session distance (km, for tracker)
     private var odoAnchorKm: Double? = null
-    private var sessionDist = 0.0   // smooth speed-integrated distance since anchor
-    private var lastSpeedMs = 0L
+    private var prevDistCount: Int? = null   // 0x284 byte6 DistanceTraveled1 (mod 256)
+    private var distCounts = 0.0             // accumulated wheel-distance counts since anchor
+    private var countsPerKm = 2290.0         // ~0.44 m/count; auto-calibrated to odometer
 
     @Volatile private var unitsMiles = false
     fun setUnitsMiles(m: Boolean) { unitsMiles = m }
@@ -125,24 +126,26 @@ class LeafPoller(
                     (((it.u(4) shl 8) or it.u(5)) / 100.0).takeIf { s -> s in 0.0..300.0 }
                 }
                 leaf = leaf.copy(speedKmh = speed)
-                val now = System.currentTimeMillis()
-                if (speed != null) {
-                    if (lastSpeedMs > 0) {
-                        val dtH = (now - lastSpeedMs) / 3_600_000.0
-                        if (dtH in 0.0..0.1) sessionDist += speed * dtH
-                    }
-                    lastSpeedMs = now
+
+                // fine distance from 0x284 byte6 DistanceTraveled1 (wheel-distance
+                // counter, ~0.44 m/count, wraps mod 256) - drift-free, no dt needed
+                sf?.let {
+                    val b6 = it.u(6)
+                    prevDistCount?.let { prev -> distCounts += ((b6 - prev) and 0xFF).toDouble() }
+                    prevDistCount = b6
                 }
-                // smooth distance = speed integral, bounded to the odometer:
-                // never lags behind it, never leads by more than ~one mile tick.
-                // Grows smoothly by speed; odometer (truth) keeps it accurate.
+                // convert to km, auto-calibrated to the odometer so it stays
+                // accurate; bounded to [odometer, odometer+1.7km] as a safety net
                 if (odoKmConv != null) {
-                    if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
+                    if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; distCounts = 0.0 }
                     val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
-                    sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + 1.7)
-                    distanceKm = odoAnchorKm!! + sessionDist
+                    if (odoDelta > 2.0 && distCounts > 100.0) {
+                        countsPerKm = (distCounts / odoDelta).coerceIn(1000.0, 4000.0)
+                    }
+                    val sd = (distCounts / countsPerKm).coerceIn(odoDelta, odoDelta + 1.7)
+                    distanceKm = odoAnchorKm!! + sd
                 }
-                status.add("spd: ${speed?.let { "%.0f km/h".format(it) } ?: "no data"}")
+                status.add("spd: ${speed?.let { "%.0f".format(it) } ?: "-"}  cpk: ${"%.0f".format(countsPerKm)}")
 
                 // ambient/outside temp: broadcast 0x510 byte7, C = b7*0.5 - 40
                 val af = elm.readBroadcast(ambientBroadcastId)
