@@ -7,7 +7,6 @@ import com.leafdash.can.IsoTp
 import com.leafdash.can.LeafState
 import com.leafdash.obd.Elm327
 import com.leafdash.transport.Transport
-import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,8 +37,7 @@ class LeafPoller(
     private var odoDisplayKm: Double? = null  // odometer in km (unit applied)
     private var distanceKm: Double? = null    // smooth session distance (km, for tracker)
     private var odoAnchorKm: Double? = null
-    private var rawSpeedKm = 0.0    // ungained speed integral since anchor
-    private var speedGain = 1.0     // auto-calibrated speed->distance scale
+    private var sessionDist = 0.0   // smooth speed-integrated distance since anchor
     private var lastSpeedMs = 0L
 
     @Volatile private var unitsMiles = false
@@ -131,25 +129,20 @@ class LeafPoller(
                 if (speed != null) {
                     if (lastSpeedMs > 0) {
                         val dtH = (now - lastSpeedMs) / 3_600_000.0
-                        if (dtH in 0.0..0.1) rawSpeedKm += speed * dtH
+                        if (dtH in 0.0..0.1) sessionDist += speed * dtH
                     }
                     lastSpeedMs = now
                 }
-                // anchor to odometer (truth); calibrate speed gain to it so the
-                // smooth estimate tracks the odometer with minimal lead
+                // smooth distance = speed integral, bounded to the odometer:
+                // never lags behind it, never leads by more than ~one mile tick.
+                // Grows smoothly by speed; odometer (truth) keeps it accurate.
                 if (odoKmConv != null) {
-                    if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; rawSpeedKm = 0.0 }
-                    val odoDelta = odoKmConv - odoAnchorKm!!
-                    if (rawSpeedKm > 1.0) {
-                        speedGain = (odoDelta / rawSpeedKm).coerceIn(0.6, 1.4)
-                    }
-                    var est = rawSpeedKm * speedGain
-                    if (abs(est - odoDelta) > 0.8) {   // safety resync
-                        rawSpeedKm = odoDelta / speedGain
-                        est = odoDelta
-                    }
-                    distanceKm = odoAnchorKm!! + est
+                    if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
+                    val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
+                    sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + 1.7)
+                    distanceKm = odoAnchorKm!! + sessionDist
                 }
+                status.add("spd: ${speed?.let { "%.0f km/h".format(it) } ?: "no data"}")
 
                 // ambient/outside temp: broadcast 0x510 byte7, C = b7*0.5 - 40
                 val af = elm.readBroadcast(ambientBroadcastId)

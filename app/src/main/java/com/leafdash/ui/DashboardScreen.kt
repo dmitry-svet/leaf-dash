@@ -111,9 +111,9 @@ fun DashboardScreen(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
-        // stable efficiency for range on short windows: prefer since-last-charge
-        // (lots of km), else the smoothed lifetime average
-        val refEff = state.lastCharge.kwhPer100?.takeIf { state.lastCharge.km >= 5.0 }
+        // stable efficiency for short windows: prefer the all-time lifetime
+        // average, else the smoothed EMA
+        val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 5.0 }
             ?: state.avgKwhPer100
         TripCard("Lifetime", state.lifetime, leaf.kwhRemaining, refEff)
         TripCard("Since last charge", state.lastCharge, leaf.kwhRemaining, refEff)
@@ -190,7 +190,7 @@ private fun TripCard(title: String, w: TripWindow, kwhRemaining: Double?, refEff
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Metric("km", fmt(w.km, 1), Modifier.weight(1f))
                 Metric("kWh", fmt(w.kwh, 2), Modifier.weight(1f))
-                Metric("kWh/100", fmt(w.kwhPer100, 1), Modifier.weight(1f))
+                Metric("kWh/100", fmt(eff, 1), Modifier.weight(1f))
                 Metric("range km", fmt(range, 0), Modifier.weight(1f))
             }
         }
