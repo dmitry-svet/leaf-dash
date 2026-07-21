@@ -18,9 +18,9 @@ class TripStore(private val context: Context) {
     suspend fun load(): TripSnapshot {
         val p = context.tripDataStore.data.first()
         return TripSnapshot(
-            lcStartOdo = p[LC_START_ODO],
+            lcKm = p[LC_KM] ?: 0.0,
             lcKwh = p[LC_KWH] ?: 0.0,
-            tripStartOdo = p[TR_START_ODO],
+            tripKm = p[TR_KM] ?: 0.0,
             tripKwh = p[TR_KWH] ?: 0.0,
             chargeMinSoc = p[CHARGE_MIN_SOC],
             emaEff = p[EMA_EFF] ?: 15.0,
@@ -43,9 +43,9 @@ class TripStore(private val context: Context) {
 
     suspend fun save(snap: TripSnapshot) {
         context.tripDataStore.edit { p ->
-            snap.lcStartOdo?.let { p[LC_START_ODO] = it } ?: p.remove(LC_START_ODO)
+            p[LC_KM] = snap.lcKm
             p[LC_KWH] = snap.lcKwh
-            snap.tripStartOdo?.let { p[TR_START_ODO] = it } ?: p.remove(TR_START_ODO)
+            p[TR_KM] = snap.tripKm
             p[TR_KWH] = snap.tripKwh
             snap.chargeMinSoc?.let { p[CHARGE_MIN_SOC] = it } ?: p.remove(CHARGE_MIN_SOC)
             p[EMA_EFF] = snap.emaEff
@@ -55,9 +55,9 @@ class TripStore(private val context: Context) {
     }
 
     private companion object {
-        val LC_START_ODO = doublePreferencesKey("lc_start_odo")
+        val LC_KM = doublePreferencesKey("lc_km")
         val LC_KWH = doublePreferencesKey("lc_kwh")
-        val TR_START_ODO = doublePreferencesKey("tr_start_odo")
+        val TR_KM = doublePreferencesKey("tr_km")
         val TR_KWH = doublePreferencesKey("tr_kwh")
         val CHARGE_MIN_SOC = doublePreferencesKey("charge_min_soc")
         val EMA_EFF = doublePreferencesKey("ema_eff")
