@@ -86,16 +86,20 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                 prevOdo = cumKm
                 badOdoStreak = 0
                 for (w in windows) w.km += dKm
-                // energy only while moving (excludes charging/idle while parked)
                 val moving = speedKmh != null && speedKmh >= MOVE_SPEED
-                if (moving && pKwh != null && kwhRemaining != null) {
+                if (pKwh != null && kwhRemaining != null) {
                     val dKwh = pKwh - kwhRemaining
                     if (abs(dKwh) < MAX_KWH_STEP) {
-                        for (w in windows) w.kwh += dKwh
-                        if (dKm >= 0.005) {
-                            val instEff = (dKwh / dKm * 100.0).coerceIn(-20.0, 60.0)
-                            val f = 1.0 - exp(-dKm / EMA_LEN_KM)
-                            avgKwhPer100 = (avgKwhPer100 + f * (instEff - avgKwhPer100)).coerceIn(5.0, 60.0)
+                        // moving: net drain incl. regen. Stationary: only positive
+                        // drain (heater/AC is real spend); a rise while parked is
+                        // charging, not negative consumption
+                        if (moving || dKwh > 0) {
+                            for (w in windows) w.kwh += dKwh
+                            if (moving && dKm >= 0.005) {
+                                val instEff = (dKwh / dKm * 100.0).coerceIn(-20.0, 60.0)
+                                val f = 1.0 - exp(-dKm / EMA_LEN_KM)
+                                avgKwhPer100 = (avgKwhPer100 + f * (instEff - avgKwhPer100)).coerceIn(5.0, 60.0)
+                            }
                         }
                     }
                 }

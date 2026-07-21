@@ -46,12 +46,28 @@ class TripTrackerTest {
         assertEquals(10.0, t.trip.km, 1e-9)
     }
 
-    @Test fun energyCountedOnlyWhileMoving() {
+    @Test fun idleDrainCounted() {
         val t = TripTracker()
         t.onSample(20.0, 1000.0, null, DRIVE)
-        t.onSample(19.0, 1005.0, null, STOP)      // stationary -> energy skipped
-        assertEquals(0.0, t.trip.kwh, 1e-9)
-        assertEquals(5.0, t.trip.km, 1e-9)
+        t.onSample(19.9, 1000.0, null, STOP)      // parked, heater/AC drain
+        assertEquals(0.1, t.trip.kwh, 1e-9)
+        assertEquals(0.0, t.trip.km, 1e-9)
+    }
+
+    @Test fun smallChargeWhileParkedNotSubtracted() {
+        val t = TripTracker()
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(19.0, 1005.0, null, DRIVE)     // 1 kWh spent driving
+        t.onSample(19.5, 1005.0, null, STOP)      // parked, charging: not negative spend
+        assertEquals(1.0, t.trip.kwh, 1e-9)
+    }
+
+    @Test fun idleDrainDoesNotSkewEma() {
+        val t = TripTracker()
+        val ema = t.avgKwhPer100
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(19.9, 1000.0, null, STOP)      // no distance -> no efficiency sample
+        assertEquals(ema, t.avgKwhPer100, 1e-9)
     }
 
     @Test fun chargingWhileParkedDoesNotSubtractEnergy() {

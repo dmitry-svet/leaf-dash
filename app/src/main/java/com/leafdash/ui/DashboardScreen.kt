@@ -180,10 +180,14 @@ private fun Tile(label: String, value: String, modifier: Modifier = Modifier, bi
 
 @Composable
 private fun TripCard(title: String, w: TripWindow, kwhRemaining: Double?, refEff: Double) {
-    // range: use this window's efficiency once it has enough distance, else the
-    // stable reference efficiency (avoids absurd range on short/downhill windows)
-    val eff = w.kwhPer100?.takeIf { w.km >= 3.0 && it > 0 } ?: refEff
-    val range = kwhRemaining?.let { if (eff > 0) it / eff * 100.0 else null }
+    // efficiency: this window's own once it has a first km of real data, else
+    // the stable reference
+    val eff = w.kwhPer100?.takeIf { w.km >= 1.0 && it > 0 } ?: refEff
+    // no range prediction until the window has its first km (fresh windows have
+    // nothing real to predict from); efficiency floored/capped like the EMA so a
+    // downhill/regen start can't show absurd range
+    val range = if (w.km < 1.0) null
+        else kwhRemaining?.let { it / eff.coerceIn(5.0, 60.0) * 100.0 }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
