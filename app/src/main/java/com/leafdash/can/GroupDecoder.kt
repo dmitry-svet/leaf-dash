@@ -68,6 +68,7 @@ object IsoTp {
     fun reassemble(raw: String): ByteArray {
         val out = ArrayList<Int>()
         var declared = -1
+        var sawCf = false
         for (tok in raw.trim().split(Regex("\\s+"))) {
             if (tok.length < 5 || !tok.all { it.isHex() }) continue
             val d = tok.substring(3)                 // strip 3-char 11-bit id
@@ -82,9 +83,16 @@ object IsoTp {
                     if (b.size >= 2) declared = ((b[0] and 0xF) shl 8) or b[1]
                     for (j in 2 until b.size) out.add(b[j])
                 }
-                0x2, 0x0 -> for (j in 1 until b.size) out.add(b[j]) // CF / SF: 1 PCI byte
+                0x2 -> {                              // consecutive frame: 1 PCI byte
+                    sawCf = true
+                    for (j in 1 until b.size) out.add(b[j])
+                }
+                0x0 -> for (j in 1 until b.size) out.add(b[j]) // single frame: 1 PCI byte
             }
         }
+        // CFs without their first frame = partial capture; no declared length to
+        // trim padding by, so the payload can't be trusted
+        if (sawCf && declared < 0) return ByteArray(0)
         val res = if (declared in 0..out.size) out.subList(0, declared) else out
         return ByteArray(res.size) { res[it].toByte() }
     }

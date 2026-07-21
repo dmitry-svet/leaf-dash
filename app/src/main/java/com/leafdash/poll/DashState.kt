@@ -18,7 +18,7 @@ data class DashState(
     val raw: Map<String, String> = emptyMap(),
     /** Diagnostic: connection/debug lines (ELM id, protocol, group status). */
     val debug: List<String> = emptyList(),
-    /** Raw odometer count from 0x5C5 (km or mi per car). Feeds economy distance. */
+    /** Smooth session distance in km (odo-bounded speed integral). Feeds economy. */
     val odometerKm: Double? = null,
     /** Whether the odometer raw count is in miles (user setting). */
     val odoMiles: Boolean = false,

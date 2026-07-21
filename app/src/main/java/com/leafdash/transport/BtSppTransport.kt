@@ -27,7 +27,12 @@ class BtSppTransport(
     override fun open() {
         runCatching { adapter.cancelDiscovery() } // best-effort; needs SCAN perm
         val s = device.createRfcommSocketToServiceRecord(SPP_UUID)
-        s.connect()                        // blocks until connected / throws
+        try {
+            s.connect()                    // blocks until connected / throws
+        } catch (e: Exception) {
+            runCatching { s.close() }      // not ours yet - don't leak it
+            throw e
+        }
         socket = s
         input = s.inputStream
         output = s.outputStream

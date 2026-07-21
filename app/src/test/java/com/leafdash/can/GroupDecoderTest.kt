@@ -33,6 +33,11 @@ class GroupDecoderTest {
         assertEquals(28.67, s.batteryTempC!!, 0.01) // (30+28+28)/3
     }
 
+    @Test fun consecutiveFramesWithoutFirstFrameRejected() {
+        // CF-only garbage (missed first frame): no declared length -> no payload
+        assertEquals(0, IsoTp.reassemble("7BB2101020304 7BB2205060708").size)
+    }
+
     @Test fun ignoresNonReplyPayload() {
         val s = GroupDecoder.apply(LeafState(), byteArrayOf(0x7F, 0x21)) // negative resp
         assertEquals(LeafState(), s)

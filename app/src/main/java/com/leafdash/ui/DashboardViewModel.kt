@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Owns the session lifecycle and folds the vehicle poll (battery kWh + CAN
@@ -67,7 +68,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun connect(transport: Transport, active: Boolean) {
         if (sessionJob?.isActive == true) return
         autoReconnect = true
-        viewModelScope.launch {
+        // assigned before this returns, so a second connect() (double-tap, or the
+        // auto-reconnect loop racing a manual connect) hits the guard above
+        sessionJob = viewModelScope.launch {
             val t = TripTracker(tripStore.load())
             t.onSessionStart()
             tracker = t
@@ -75,6 +78,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             p.setUnitsMiles(unitsMiles)
             poller = p
 
+            collectJob?.cancel()
             collectJob = viewModelScope.launch {
                 p.state.collect { ps ->
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
@@ -95,7 +99,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            sessionJob = viewModelScope.launch(Dispatchers.IO) { p.runBlocking() }
+            withContext(Dispatchers.IO) { p.runBlocking() }
         }
     }
 

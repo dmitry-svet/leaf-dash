@@ -22,6 +22,8 @@ class LeafPoller(
     private val transport: Transport,
     /** true = active ISO-TP polling (real Leaf); false = passive monitor (demo). */
     private val active: Boolean = false,
+    /** No state progress for this long = hung link; watchdog closes it. */
+    private val stallTimeoutMs: Long = 30_000,
 ) {
     private val elm = Elm327(transport)
 
@@ -34,14 +36,20 @@ class LeafPoller(
     private var debug: List<String> = emptyList()
 
     private var odometerRaw: Double? = null   // raw 5C5 count (km or mi per car)
-    private var odoDisplayKm: Double? = null  // odometer in km (unit applied)
-    private var distanceKm: Double? = null    // smooth session distance (km, for tracker)
+    internal var odoDisplayKm: Double? = null // odometer in km (unit applied)
+        private set
+    internal var distanceKm: Double? = null   // smooth session distance (km, for tracker)
+        private set
     private var odoAnchorKm: Double? = null
     private var sessionDist = 0.0            // speed-integrated distance since anchor
     private var lastSpeedMs = 0L
+    private var odoRejects = 0               // consecutive implausible odo readings
+    private var lastUnitsMiles: Boolean? = null
 
     @Volatile private var unitsMiles = false
     fun setUnitsMiles(m: Boolean) { unitsMiles = m }
+
+    @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
     private val activeGroups = listOf("2101", "2103", "2104", "2105", "2106")
@@ -53,11 +61,14 @@ class LeafPoller(
     private val speedBroadcastId = "284"
 
     private fun status(msg: String) {
+        lastProgressMs = System.currentTimeMillis()
         _state.value = _state.value.copy(connecting = true, connectMsg = msg)
     }
 
     fun runBlocking() {
         running = true
+        lastProgressMs = System.currentTimeMillis()
+        val watchdog = startWatchdog()
         try {
             status("Opening Bluetooth...")
             transport.open()
@@ -71,8 +82,28 @@ class LeafPoller(
         } finally {
             runCatching { transport.close() }
             running = false
+            watchdog.interrupt()
         }
     }
+
+    /**
+     * ELM327 reads block with no timeout (BT sockets can hang silently, and the
+     * odometer broadcast stops when the car turns off). If the session makes no
+     * progress for [stallTimeoutMs], stop it: closing the transport unblocks the
+     * read, runBlocking exits, and the UI auto-reconnect takes over.
+     */
+    private fun startWatchdog() = Thread {
+        try {
+            while (running) {
+                Thread.sleep((stallTimeoutMs / 4).coerceAtLeast(10))
+                if (running && System.currentTimeMillis() - lastProgressMs > stallTimeoutMs) {
+                    stop()
+                    break
+                }
+            }
+        } catch (_: InterruptedException) {
+        }
+    }.apply { isDaemon = true; start() }
 
     /** Passive broadcast monitor (used by the demo transport). */
     private fun runPassive() {
@@ -114,10 +145,7 @@ class LeafPoller(
                         it.data.joinToString("") { b -> "%02X".format(b) }
                 }
                 val readings = frames.mapNotNull { decodeOdometer(it) }.sorted()
-                if (readings.isNotEmpty()) odometerRaw = readings[readings.size / 2]
-                val odoKmConv = odometerRaw?.let { if (unitsMiles) it * 1.609344 else it }
-                odoDisplayKm = odoKmConv
-                status.add("odo: ${odoKmConv?.let { "%.0f km".format(it) } ?: "no data"}")
+                val median = if (readings.isEmpty()) null else readings[readings.size / 2]
 
                 // speed 0x284 -> smooth distance between coarse odometer ticks
                 val sf = elm.readBroadcast(speedBroadcastId)
@@ -125,22 +153,8 @@ class LeafPoller(
                     (((it.u(4) shl 8) or it.u(5)) / 100.0).takeIf { s -> s in 0.0..300.0 }
                 }
                 leaf = leaf.copy(speedKmh = speed)
-                val now = System.currentTimeMillis()
-                if (speed != null) {
-                    if (lastSpeedMs > 0) {
-                        val dtH = (now - lastSpeedMs) / 3_600_000.0
-                        if (dtH in 0.0..0.1) sessionDist += speed * dtH
-                    }
-                    lastSpeedMs = now
-                }
-                // smooth distance = speed integral (known km/h scale), bounded to
-                // the odometer: never lags it, never leads by more than one tick
-                if (odoKmConv != null) {
-                    if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
-                    val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
-                    sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + 1.7)
-                    distanceKm = odoAnchorKm!! + sessionDist
-                }
+                updateDistance(median, speed, System.currentTimeMillis())
+                status.add("odo: ${odoDisplayKm?.let { "%.0f km".format(it) } ?: "no data"}")
                 status.add("spd: ${speed?.let { "%.0f km/h".format(it) } ?: "no data"}")
 
                 // ambient/outside temp: broadcast 0x510 byte7, C = b7*0.5 - 40
@@ -166,6 +180,52 @@ class LeafPoller(
         }
     }
 
+    /**
+     * Fold one odometer reading + speed sample into the smooth session distance.
+     *
+     * The raw counter is a truncated integer (km or mi), so the true distance
+     * since the anchor lies in (odoDelta - 1, odoDelta + 1); the speed integral
+     * is clamped to those bounds. Readings that go backwards or jump implausibly
+     * within one cycle are corrupt BT reads and dropped - unless they persist
+     * ([ODO_REJECT_LIMIT] in a row), which means the counter really moved, so
+     * accept and re-anchor. A unit toggle changes the km conversion scale, so it
+     * re-anchors too.
+     */
+    internal fun updateDistance(reading: Double?, speedKmh: Double?, nowMs: Long) {
+        if (reading != null) {
+            val cur = odometerRaw
+            if (cur == null || (reading - cur) in 0.0..MAX_ODO_STEP) {
+                odometerRaw = reading
+                odoRejects = 0
+            } else if (++odoRejects >= ODO_REJECT_LIMIT) {
+                odometerRaw = reading
+                odoAnchorKm = null
+                odoRejects = 0
+            }
+        }
+        val um = unitsMiles
+        if (um != lastUnitsMiles) {
+            lastUnitsMiles = um
+            odoAnchorKm = null
+        }
+        val odoKmConv = odometerRaw?.let { if (um) it * MI_TO_KM else it }
+        odoDisplayKm = odoKmConv
+
+        if (speedKmh != null) {
+            if (lastSpeedMs > 0) {
+                val dtH = (nowMs - lastSpeedMs) / 3_600_000.0
+                if (dtH in 0.0..0.1) sessionDist += speedKmh * dtH
+            }
+            lastSpeedMs = nowMs
+        }
+        if (odoKmConv != null) {
+            if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
+            val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
+            sessionDist = sessionDist.coerceIn((odoDelta - 1.0).coerceAtLeast(0.0), odoDelta + 1.0)
+            distanceKm = odoAnchorKm!! + sessionDist
+        }
+    }
+
     /** Decode odometer km from broadcast 0x5C5: (B1<<16 | B2<<8 | B3). */
     private fun decodeOdometer(f: CanFrame?): Double? {
         if (f == null) return null
@@ -179,6 +239,7 @@ class LeafPoller(
     }
 
     private fun publish(connected: Boolean) {
+        lastProgressMs = System.currentTimeMillis()
         _state.value = DashState(
             leaf = leaf,
             connected = connected,
@@ -188,5 +249,13 @@ class LeafPoller(
             odometerKm = distanceKm,   // smooth session distance -> tracker
             odoKm = odoDisplayKm,      // odometer reading -> Odo tile
         )
+    }
+
+    private companion object {
+        const val MI_TO_KM = 1.609344
+        // raw counter units per poll cycle beyond this = corrupt read (a cycle
+        // is seconds; even 250 km/h moves it by ~1)
+        const val MAX_ODO_STEP = 10.0
+        const val ODO_REJECT_LIMIT = 3  // this many in a row = counter really moved
     }
 }

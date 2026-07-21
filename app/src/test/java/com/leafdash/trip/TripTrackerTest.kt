@@ -86,6 +86,40 @@ class TripTrackerTest {
         assertEquals(10.0, t.trip.km, 1e-9)
     }
 
+    @Test fun transientOdoSpikeDoesNotLoseDistance() {
+        val t = TripTracker()
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(19.5, 5000.0, null, DRIVE)     // corrupt spike: baseline kept
+        t.onSample(19.0, 1005.0, null, DRIVE)     // real reading resumes
+        assertEquals(5.0, t.trip.km, 1e-9)
+    }
+
+    @Test fun backwardsOdoReadingIgnored() {
+        val t = TripTracker()
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(19.5, 1005.0, null, DRIVE)
+        t.onSample(19.5, 900.0, null, DRIVE)      // corrupt backwards read
+        t.onSample(19.0, 1006.0, null, DRIVE)     // real reading resumes
+        assertEquals(6.0, t.trip.km, 1e-9)        // not 5 + 106
+    }
+
+    @Test fun persistentOdoShiftRebaselines() {
+        val t = TripTracker()
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(19.5, 5000.0, null, DRIVE)     // shift, sample 1: skipped
+        t.onSample(19.5, 5001.0, null, DRIVE)     // shift, sample 2: rebaseline
+        t.onSample(19.0, 5002.0, null, DRIVE)     // counted from new baseline
+        assertEquals(1.0, t.trip.km, 1e-9)
+    }
+
+    @Test fun corruptKwhStepSkipsEnergyNotDistance() {
+        val t = TripTracker()
+        t.onSample(20.0, 1000.0, null, DRIVE)
+        t.onSample(10.0, 1005.0, null, DRIVE)     // 10 kWh in one sample = corrupt
+        assertEquals(5.0, t.trip.km, 1e-9)
+        assertEquals(0.0, t.trip.kwh, 1e-9)
+    }
+
     @Test fun snapshotRestoresPersistentWindows() {
         val t = TripTracker()
         t.onSample(20.0, 1000.0, 80.0, DRIVE)

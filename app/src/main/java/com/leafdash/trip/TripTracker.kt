@@ -60,6 +60,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
 
     private var prevOdo: Double? = null
     private var prevKwh: Double? = null
+    private var badOdoStreak = 0
     private var chargeMinSoc: Double? = snapshot.chargeMinSoc
 
     /** Smoothed lifetime efficiency, kWh/100 km. */
@@ -77,9 +78,13 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
     fun onSample(kwhRemaining: Double?, cumKm: Double, soc: Double?, speedKmh: Double? = null) {
         val pOdo = prevOdo
         val pKwh = prevKwh
-        if (pOdo != null) {
+        if (pOdo == null) {
+            prevOdo = cumKm
+        } else {
             val dKm = cumKm - pOdo
             if (dKm in 0.0..MAX_JUMP) {          // sane, connected movement
+                prevOdo = cumKm
+                badOdoStreak = 0
                 for (w in windows) w.km += dKm
                 // energy only while moving (excludes charging/idle while parked)
                 val moving = speedKmh != null && speedKmh >= MOVE_SPEED
@@ -94,9 +99,15 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                         }
                     }
                 }
+            } else if (++badOdoStreak >= BAD_ODO_LIMIT) {
+                // out-of-range deltas persisting means the distance source really
+                // moved (e.g. re-anchor after a unit toggle) - rebaseline without
+                // counting the gap. A single one is a corrupt read: keep the
+                // baseline so the distance around it isn't lost.
+                prevOdo = cumKm
+                badOdoStreak = 0
             }
         }
-        prevOdo = cumKm
         if (kwhRemaining != null) prevKwh = kwhRemaining
 
         // charge detection: SOC rising well above its trough means a charge
@@ -127,6 +138,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
         // off-app gaps are excluded by the per-session rebaseline (prevOdo reset),
         // so this only guards corrupt single reads - allow within-session catch-up
         const val MAX_JUMP = 200.0      // km/sample beyond this = corrupt, skip
+        const val BAD_ODO_LIMIT = 2     // consecutive bad deltas before rebaseline
         const val MOVE_SPEED = 1.0      // km/h; below this = stationary, skip energy
         const val CHARGE_SOC_RISE = 5.0 // % SOC rise above trough = charged
         const val EMA_LEN_KM = 8.0      // smoothing length for lifetime efficiency
