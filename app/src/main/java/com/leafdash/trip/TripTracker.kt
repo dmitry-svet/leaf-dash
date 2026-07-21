@@ -112,7 +112,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                     if (dKm in 0.005..MAX_JUMP) {
                         val instEff = (dKwh / dKm * 100.0).coerceIn(-20.0, 60.0)
                         val f = 1.0 - exp(-dKm / EMA_LEN_KM)
-                        avgKwhPer100 = (avgKwhPer100 + f * (instEff - avgKwhPer100)).coerceIn(1.0, 60.0)
+                        avgKwhPer100 = (avgKwhPer100 + f * (instEff - avgKwhPer100)).coerceIn(5.0, 60.0)
                     }
                 }
             }

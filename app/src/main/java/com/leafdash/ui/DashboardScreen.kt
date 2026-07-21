@@ -113,7 +113,7 @@ fun DashboardScreen(
         )
         // stable efficiency for short windows: prefer the all-time lifetime
         // average, else the smoothed EMA
-        val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 5.0 }
+        val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
             ?: state.avgKwhPer100
         TripCard("Lifetime", state.lifetime, leaf.kwhRemaining, refEff)
         TripCard("Since last charge", state.lastCharge, leaf.kwhRemaining, refEff)
