@@ -35,7 +35,7 @@ fun DashboardScreen(
     onDemo: () -> Unit,
     onDisconnect: () -> Unit,
     onResetTrip: () -> Unit,
-    onToggleUnits: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(
         Modifier
@@ -77,8 +77,8 @@ fun DashboardScreen(
                 Button(onClick = onConnect) { Text("Connect") }
                 TextButton(onClick = onDemo) { Text("Demo") }
             }
-            TextButton(onClick = onToggleUnits) {
-                Text(if (state.odoMiles) "mi" else "km")
+            TextButton(onClick = onOpenSettings) {
+                Text("⋮", style = MaterialTheme.typography.titleLarge)   // vertical ellipsis
             }
         }
         if (state.connecting && state.connectMsg != null) {
@@ -194,7 +194,7 @@ private fun TripCard(title: String, w: TripWindow, kwhRemaining: Double?, refEff
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Metric("km", fmt(w.km, 1), Modifier.weight(1f))
                 Metric("kWh", fmt(w.kwh, 2), Modifier.weight(1f))
-                Metric("kWh/100", fmt(eff, 1), Modifier.weight(1f))
+                Metric("kWh/100", if (w.km >= 1.0) fmt(eff, 1) else "--", Modifier.weight(1f))
                 Metric("range km", fmt(range, 0), Modifier.weight(1f))
             }
         }

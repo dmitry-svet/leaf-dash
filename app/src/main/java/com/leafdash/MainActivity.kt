@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
         val state by vm.state.collectAsState()
         val context = LocalContext.current
         var showPicker by remember { mutableStateOf(false) }
+        var showSettings by remember { mutableStateOf(false) }
 
         // keep the screen awake while a session is connected (driving dashboard)
         val activity = context as? android.app.Activity
@@ -101,13 +102,22 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        if (showSettings) {
+            com.leafdash.ui.SettingsScreen(
+                odoMiles = state.odoMiles,
+                onSetUnits = { vm.setUnits(it) },
+                onBack = { showSettings = false },
+            )
+            return
+        }
+
         DashboardScreen(
             state = state,
             onConnect = ::onConnect,
             onDemo = { vm.connect(DemoTransport(), active = false) },
             onDisconnect = { vm.disconnect() },
             onResetTrip = { vm.resetTrip() },
-            onToggleUnits = { vm.toggleUnits() },
+            onOpenSettings = { showSettings = true },
         )
 
         if (showPicker && adapter != null) {

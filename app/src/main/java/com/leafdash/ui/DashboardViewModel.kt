@@ -57,12 +57,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tripStore.saveLastDevice(address) }
     }
 
-    /** Toggle odometer units (km <-> mi); persisted. */
-    fun toggleUnits() {
-        unitsMiles = !unitsMiles
-        poller?.setUnitsMiles(unitsMiles)
-        _state.value = _state.value.copy(odoMiles = unitsMiles)
-        viewModelScope.launch { tripStore.saveUnitsMiles(unitsMiles) }
+    /** Set car odometer units (km / mi); persisted. */
+    fun setUnits(miles: Boolean) {
+        if (unitsMiles == miles) return
+        unitsMiles = miles
+        poller?.setUnitsMiles(miles)
+        _state.value = _state.value.copy(odoMiles = miles)
+        viewModelScope.launch { tripStore.saveUnitsMiles(miles) }
     }
 
     fun connect(transport: Transport, active: Boolean) {
