@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
@@ -17,6 +18,8 @@ class TripStore(private val context: Context) {
 
     suspend fun load(): TripSnapshot {
         val p = context.tripDataStore.data.first()
+        // schema changed to app-tracked accumulation; drop older inconsistent data
+        if ((p[SCHEMA_VER] ?: 0) < SCHEMA_CURRENT) return TripSnapshot()
         return TripSnapshot(
             lcKm = p[LC_KM] ?: 0.0,
             lcKwh = p[LC_KWH] ?: 0.0,
@@ -51,6 +54,7 @@ class TripStore(private val context: Context) {
             p[EMA_EFF] = snap.emaEff
             p[LIFETIME_KM] = snap.lifetimeKm
             p[LIFETIME_KWH] = snap.lifetimeKwh
+            p[SCHEMA_VER] = SCHEMA_CURRENT
         }
     }
 
@@ -65,5 +69,7 @@ class TripStore(private val context: Context) {
         val LIFETIME_KWH = doublePreferencesKey("lifetime_kwh")
         val UNITS_MILES = booleanPreferencesKey("units_miles")
         val LAST_DEVICE = stringPreferencesKey("last_device")
+        val SCHEMA_VER = intPreferencesKey("schema_ver")
+        const val SCHEMA_CURRENT = 2
     }
 }
