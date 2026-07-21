@@ -6,17 +6,26 @@ data from an **ELM327 Bluetooth-Classic** OBD2 dongle.
 Clean-room build. It uses the car's public/open-source CAN protocol only — no
 LeafSpy code, assets, or branding.
 
-## Features (MVP)
+## Features
 
 Single screen:
 
-- **Live**: SOC %, gids → kWh remaining, live power (kW), speed, pack volts,
-  pack amps, battery temp.
-- **Energy economy — 3 windows** shown together: since last charge, since car
-  on, and a resettable trip. Each shows km, kWh, and kWh/100 km.
+- **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
+  pack amps, battery + ambient temp, odometer (km/mi toggle).
+- **Energy economy — 4 windows** shown together: lifetime, since last charge,
+  since car on, and a resettable trip. Each shows km, kWh, kWh/100 km, and a
+  range prediction. All windows count **app-connected distance only**
+  (per-session odometer deltas; driving without the app is never counted).
+  Range prediction is hidden (`--`) until a window has its first km, then uses
+  that window's own measured efficiency (clamped 5–60 kWh/100).
+  Stationary drain (heater/AC) counts as consumption; charging while parked
+  does not go negative. Regen while moving counts.
+- **Distance**: smooth km = speed integral bounded to the coarse 0x5C5
+  odometer within its integer-km truncation window (never leads/lags by
+  more than 1 km). Corrupt/backwards odometer reads are rejected.
+- **Robust sessions**: auto-reconnect every 10 s; a watchdog kills a hung
+  link (frozen dongle, car turned off) after 30 s so reconnect can take over.
 - **Demo mode**: runs the whole app with synthetic data — no car needed.
-
-Not yet: SOH %, pack Ah, cell voltages (need active ISO-TP queries — phase 2).
 
 ## Build & run
 
@@ -54,10 +63,10 @@ jar automatically. Run the `app` config on an API 26+ device.
 ~/tools/gradle-8.9/bin/gradle --no-daemon testDebugUnitTest
 ```
 
-Pure-logic tests (no device/emulator): `CanDecoderTest`, `Elm327Test`,
-`TripTrackerTest`, `LeafPollerTest`. The decoder tests assert the code
-implements the documented CAN formulas; they do **not** prove the formulas
-match your car — see below.
+Pure-logic tests (no device/emulator): `CanDecoderTest`, `GroupDecoderTest`,
+`Elm327Test`, `TripTrackerTest`, `LeafPollerTest`. The decoder tests assert
+the code implements the documented CAN formulas; they do **not** prove the
+formulas match your car — see below.
 
 ## Architecture
 
@@ -70,10 +79,10 @@ Transport (iface)   BtSppTransport (RFCOMM) | DemoTransport | MockTransport
 
 `Transport` is an interface, so all logic runs and is tested without a car.
 
-## CAN map (AZE0 broadcast) — APPROXIMATE
+## CAN map
 
-Byte formulas in `CanDecoder` are community/documented decodings and may need
-tuning per car. Verified for **self-consistency** only.
+Passive broadcast (`CanDecoder`, demo/monitor mode) — community decodings,
+verified for **self-consistency** only:
 
 | CAN id  | value               |
 |---------|---------------------|
@@ -81,7 +90,18 @@ tuning per car. Verified for **self-consistency** only.
 | `0x55B` | SOC %               |
 | `0x5BC` | gids                |
 | `0x5C0` | battery temp (muxed)|
-| `0x284` | vehicle speed (scaling UNCONFIRMED) |
+
+Broadcast ids read via hardware filter in active mode (`LeafPoller`):
+
+| CAN id  | value               |
+|---------|---------------------|
+| `0x5C5` | odometer count (B1..B3; km or mi per car) |
+| `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
+| `0x510` | ambient temp (B7*0.5 - 40 C) |
+
+Active ISO-TP polling of the LBC (`GroupDecoder`, request `0x79B` / reply
+`0x7BB`, groups `2101`–`2106`, verified against a real AZE0): kWh remaining,
+SOC, SOH, Ah capacity, Hx, pack temps.
 
 ## On-car checklist (phase 2 — do on the Leaf)
 
