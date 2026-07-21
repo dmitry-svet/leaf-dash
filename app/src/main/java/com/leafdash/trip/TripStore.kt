@@ -24,7 +24,7 @@ class TripStore(private val context: Context) {
             tripKwh = p[TR_KWH] ?: 0.0,
             chargeMinSoc = p[CHARGE_MIN_SOC],
             emaEff = p[EMA_EFF] ?: 15.0,
-            lifetimeStartOdo = p[LIFETIME_START_ODO],
+            lifetimeKm = p[LIFETIME_KM] ?: 0.0,
             lifetimeKwh = p[LIFETIME_KWH] ?: 0.0,
         )
     }
@@ -49,7 +49,7 @@ class TripStore(private val context: Context) {
             p[TR_KWH] = snap.tripKwh
             snap.chargeMinSoc?.let { p[CHARGE_MIN_SOC] = it } ?: p.remove(CHARGE_MIN_SOC)
             p[EMA_EFF] = snap.emaEff
-            snap.lifetimeStartOdo?.let { p[LIFETIME_START_ODO] = it } ?: p.remove(LIFETIME_START_ODO)
+            p[LIFETIME_KM] = snap.lifetimeKm
             p[LIFETIME_KWH] = snap.lifetimeKwh
         }
     }
@@ -61,7 +61,7 @@ class TripStore(private val context: Context) {
         val TR_KWH = doublePreferencesKey("tr_kwh")
         val CHARGE_MIN_SOC = doublePreferencesKey("charge_min_soc")
         val EMA_EFF = doublePreferencesKey("ema_eff")
-        val LIFETIME_START_ODO = doublePreferencesKey("lifetime_start_odo")
+        val LIFETIME_KM = doublePreferencesKey("lifetime_km")
         val LIFETIME_KWH = doublePreferencesKey("lifetime_kwh")
         val UNITS_MILES = booleanPreferencesKey("units_miles")
         val LAST_DEVICE = stringPreferencesKey("last_device")
