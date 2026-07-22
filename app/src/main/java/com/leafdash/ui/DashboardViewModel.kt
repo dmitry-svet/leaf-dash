@@ -66,14 +66,25 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tripStore.saveUnitsMiles(miles) }
     }
 
+    private var lastLinkLossMs = 0L
+
     fun connect(transport: Transport, active: Boolean) {
         if (sessionJob?.isActive == true) return
         autoReconnect = true
         // assigned before this returns, so a second connect() (double-tap, or the
         // auto-reconnect loop racing a manual connect) hits the guard above
         sessionJob = viewModelScope.launch {
-            val t = TripTracker(tripStore.load())
-            t.onSessionStart()
+            // reuse the tracker across quick reconnects (BT dropout at a light):
+            // rebaseline only. Reset "since car on" just on app launch or after a
+            // long gap (car really was off).
+            val existing = tracker
+            val gapMs = System.currentTimeMillis() - lastLinkLossMs
+            val t = if (existing != null) {
+                if (gapMs > CAR_OFF_GAP_MS) existing.onSessionStart() else existing.rebaseline()
+                existing
+            } else {
+                TripTracker(tripStore.load()).also { it.onSessionStart() }
+            }
             tracker = t
             val p = LeafPoller(transport, active = active)
             p.setUnitsMiles(unitsMiles)
@@ -101,6 +112,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             withContext(Dispatchers.IO) { p.runBlocking() }
+            lastLinkLossMs = System.currentTimeMillis()   // session ended (drop/off)
         }
     }
 
@@ -118,5 +130,10 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         disconnect()
         super.onCleared()
+    }
+
+    private companion object {
+        /** Link gap longer than this = the car was actually off. */
+        const val CAR_OFF_GAP_MS = 30 * 60 * 1000L
     }
 }

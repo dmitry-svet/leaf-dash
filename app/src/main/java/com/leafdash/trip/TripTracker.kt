@@ -67,8 +67,17 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
     var avgKwhPer100: Double = snapshot.emaEff
         private set
 
+    /** New car-on cycle: reset the carOn window and rebaseline. */
     fun onSessionStart() {
         carOn.reset()
+        rebaseline()
+    }
+
+    /**
+     * Link reconnect within the same car-on cycle (BT dropout at a traffic
+     * light etc.): rebaseline so the gap isn't counted, but keep carOn.
+     */
+    fun rebaseline() {
         prevOdo = null
         prevKwh = null
     }
