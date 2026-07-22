@@ -170,6 +170,13 @@ class LeafPoller(
                 }
                 status.add("ext: ${leaf.ambientTempC?.let { "%.0f C".format(it) } ?: "no data"}")
 
+                // 12V battery: the ELM327 measures OBD pin 16 directly (ATRV)
+                val rv = elm.queryRaw("ATRV").trim()          // e.g. "12.4V"
+                rv.removeSuffix("V").toDoubleOrNull()?.let { v ->
+                    if (v in 5.0..20.0) leaf = leaf.copy(aux12V = v)
+                }
+                status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
+
                 elm.setRxAddr(lbcRxAddr)   // restore filter for battery polling
             }
 

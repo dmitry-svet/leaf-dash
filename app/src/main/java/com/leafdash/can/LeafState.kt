@@ -11,6 +11,7 @@ data class LeafState(
     val packAmps: Double? = null,      // + = discharge, - = regen/charge
     val batteryTempC: Double? = null,
     val ambientTempC: Double? = null,
+    val aux12V: Double? = null,        // 12V battery, measured by the ELM327 (ATRV)
     val speedKmh: Double? = null,
     // from active LBC group polling
     val sohPercent: Double? = null,

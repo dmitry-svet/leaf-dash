@@ -96,8 +96,9 @@ fun DashboardScreen(
             Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("Bat temp", tempStr, Modifier.weight(1f))
-            Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(1f))
+            Tile("Bat temp", tempStr, Modifier.weight(1.4f))
+            Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
+            Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
