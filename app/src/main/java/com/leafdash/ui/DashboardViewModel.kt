@@ -86,7 +86,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 TripTracker(tripStore.load()).also { it.onSessionStart() }
             }
             tracker = t
-            val p = LeafPoller(transport, active = active)
+            val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
             poller = p
 
@@ -126,6 +126,26 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun resetTrip() = tracker?.resetTrip()
+
+    // diagnostic CSV log in the app's external files dir; capped so it can't grow
+    // without bound. Path: Android/data/com.leafdash/files/leafdash-dist.csv
+    private val logFile: java.io.File? by lazy {
+        getApplication<Application>().getExternalFilesDir(null)?.let {
+            java.io.File(it, "leafdash-dist.csv")
+        }
+    }
+
+    private fun logLine(line: String) {
+        val f = logFile ?: return
+        runCatching {
+            if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
+            if (f.length() == 0L) f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist\n")
+            f.appendText(line + "\n")
+        }
+    }
+
+    /** Path of the diagnostic CSV log, for display. */
+    val logPath: String get() = logFile?.absolutePath ?: "(unavailable)"
 
     override fun onCleared() {
         disconnect()

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     odoMiles: Boolean,
     onSetUnits: (Boolean) -> Unit,
+    logPath: String,
     onBack: () -> Unit,
 ) {
     Column(
@@ -54,6 +55,9 @@ fun SettingsScreen(
                 "odometer reads lower than the dash.",
             style = MaterialTheme.typography.bodySmall,
         )
+
+        Text("Distance log", style = MaterialTheme.typography.titleMedium)
+        Text(logPath, style = MaterialTheme.typography.bodySmall)
     }
 }
 

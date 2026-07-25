@@ -106,6 +106,7 @@ class MainActivity : ComponentActivity() {
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
+                logPath = vm.logPath,
                 onBack = { showSettings = false },
             )
             return

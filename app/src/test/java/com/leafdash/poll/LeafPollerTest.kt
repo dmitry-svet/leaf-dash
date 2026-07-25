@@ -12,13 +12,13 @@ class LeafPollerTest {
 
     private fun poller() = LeafPoller(MockTransport(emptyMap()))
 
-    @Test fun distanceLeadsOdoByAtMostOneKm() {
+    @Test fun distanceLeadIsCapped() {
         val p = poller()
         var t = 1_000L
         p.updateDistance(1000.0, 90.0, t)
         t += 240_000                       // 4 min at 90 km/h = 6 km integral
         p.updateDistance(1000.0, 90.0, t)  // odo still 1000 -> integral over-read
-        assertEquals(1001.0, p.distanceKm!!, 1e-6)  // capped at odo + 1 (truncation)
+        assertEquals(1000.6, p.distanceKm!!, 1e-6)  // capped at odo + LEAD_CAP_KM
     }
 
     @Test fun odoTickPullsDistanceUpToMarker() {

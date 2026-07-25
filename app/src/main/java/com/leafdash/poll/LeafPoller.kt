@@ -24,6 +24,8 @@ class LeafPoller(
     private val active: Boolean = false,
     /** No state progress for this long = hung link; watchdog closes it. */
     private val stallTimeoutMs: Long = 30_000,
+    /** Diagnostic CSV logger (one line per active cycle). */
+    private val logLine: (String) -> Unit = {},
 ) {
     private val elm = Elm327(transport)
 
@@ -177,6 +179,13 @@ class LeafPoller(
                 }
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
+                // diagnostic CSV: t,odoRaw,odoKm,spd,b6(counter),sessDist,dist
+                logLine(
+                    "${System.currentTimeMillis()},${odometerRaw ?: ""}," +
+                        "${odoDisplayKm ?: ""},${speed ?: ""},${sf?.u(6) ?: ""}," +
+                        "${"%.3f".format(sessionDist)},${distanceKm?.let { "%.3f".format(it) } ?: ""}",
+                )
+
                 elm.setRxAddr(lbcRxAddr)   // restore filter for battery polling
             }
 
@@ -231,8 +240,9 @@ class LeafPoller(
             // odometer is truncated to whole km/mi: once it reads N, distance is
             // in [odoDelta, odoDelta + one tick). Lower bound = odoDelta keeps the
             // speed integral from lagging km-by-km behind the odometer.
-            val tick = if (um) MI_TO_KM else 1.0
-            sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + tick)
+            // lead cap: let the smooth integral run at most this far past the
+            // last confirmed odometer marker (keeps it from drifting ~1 tick ahead)
+            sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + LEAD_CAP_KM)
             distanceKm = odoAnchorKm!! + sessionDist
         }
     }
@@ -268,5 +278,6 @@ class LeafPoller(
         // is seconds; even 250 km/h moves it by ~1)
         const val MAX_ODO_STEP = 10.0
         const val ODO_REJECT_LIMIT = 3  // this many in a row = counter really moved
+        const val LEAD_CAP_KM = 0.6     // max the smooth integral leads the odometer
     }
 }
