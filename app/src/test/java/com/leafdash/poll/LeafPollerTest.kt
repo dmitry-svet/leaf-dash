@@ -21,16 +21,16 @@ class LeafPollerTest {
         assertEquals(1001.0, p.distanceKm!!, 1e-6)  // capped at odo + 1 (truncation)
     }
 
-    @Test fun firstOdoTickDoesNotJumpDistance() {
+    @Test fun odoTickPullsDistanceUpToMarker() {
         val p = poller()
         var t = 1_000L
         p.updateDistance(1000.0, 30.0, t)
-        t += 48_000                        // 0.4 km at 30 km/h
+        t += 48_000                        // 0.4 km at 30 km/h (speed under-reads)
         p.updateDistance(1000.0, 30.0, t)
         assertEquals(1000.4, p.distanceKm!!, 1e-6)
         t += 1_000
-        p.updateDistance(1001.0, 30.0, t)  // odo ticks over mid-ride
-        assertEquals(1000.41, p.distanceKm!!, 0.01)  // no snap to 1001
+        p.updateDistance(1001.0, 30.0, t)  // odo ticks over: marker passed
+        assertEquals(1001.0, p.distanceKm!!, 1e-6)  // pulled up, no km-by-km lag
     }
 
     @Test fun backwardsOdoReadingRejected() {

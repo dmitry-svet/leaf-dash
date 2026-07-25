@@ -228,7 +228,11 @@ class LeafPoller(
         if (odoKmConv != null) {
             if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
             val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
-            sessionDist = sessionDist.coerceIn((odoDelta - 1.0).coerceAtLeast(0.0), odoDelta + 1.0)
+            // odometer is truncated to whole km/mi: once it reads N, distance is
+            // in [odoDelta, odoDelta + one tick). Lower bound = odoDelta keeps the
+            // speed integral from lagging km-by-km behind the odometer.
+            val tick = if (um) MI_TO_KM else 1.0
+            sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + tick)
             distanceKm = odoAnchorKm!! + sessionDist
         }
     }
