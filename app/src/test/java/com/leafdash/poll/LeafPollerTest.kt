@@ -18,8 +18,8 @@ class LeafPollerTest {
         p.updateDistance(1000.0, 90.0, t)  // anchor
         t += 240_000                       // 4 min at 90 km/h = 6 km raw integral
         p.updateDistance(1000.0, 90.0, t)
-        // 1000 + 6.0 * SEED_GAIN(0.96); smooth, not clamped to the odometer
-        assertEquals(1005.76, p.distanceKm!!, 1e-6)
+        // 1000 + 6.0 * SEED_GAIN(1.0); smooth, not clamped to the odometer
+        assertEquals(1006.0, p.distanceKm!!, 1e-6)
     }
 
     @Test fun odoTickDoesNotJumpDistance() {
@@ -31,7 +31,7 @@ class LeafPollerTest {
         val before = p.distanceKm!!
         t += 1_000
         p.updateDistance(1001.0, 30.0, t)  // odo ticks over: no snap/jump
-        assertEquals(before + 30.0 * (1_000.0 / 3_600_000.0) * 0.96, p.distanceKm!!, 1e-6)
+        assertEquals(before + 30.0 * (1_000.0 / 3_600_000.0), p.distanceKm!!, 1e-6)
     }
 
     @Test fun backwardsOdoReadingRejected() {

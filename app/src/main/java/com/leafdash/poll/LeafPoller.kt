@@ -45,7 +45,7 @@ class LeafPoller(
     private var odoAnchorKm: Double? = null
     private var sessionDist = 0.0            // raw speed-integrated distance since anchor
     private var lastSpeedMs = 0L
-    private var speedGain = 0.96             // speed->distance scale, calibrated to odometer
+    private var speedGain = 1.0              // speed->distance scale, calibrated over long spans
     private var calibOdo: Double? = null     // odo km at first tick (calibration start)
     private var calibSess = 0.0              // raw sessionDist at first tick
     private var lastTickOdo = 0.0
@@ -249,8 +249,12 @@ class LeafPoller(
                 val c0 = calibOdo
                 if (c0 == null) { calibOdo = odoKmConv; calibSess = sessionDist }
                 else {
+                    // only calibrate over a long span: the odometer is integer km/mi
+                    // and the anchor lands mid-tick, so short spans overstate it
                     val rawSpan = sessionDist - calibSess
-                    if (rawSpan > 1.0) speedGain = ((odoKmConv - c0) / rawSpan).coerceIn(0.7, 1.3)
+                    if (rawSpan > CALIB_MIN_KM) {
+                        speedGain = ((odoKmConv - c0) / rawSpan).coerceIn(0.85, 1.15)
+                    }
                 }
                 lastTickOdo = odoKmConv
             }
@@ -289,6 +293,7 @@ class LeafPoller(
         // is seconds; even 250 km/h moves it by ~1)
         const val MAX_ODO_STEP = 10.0
         const val ODO_REJECT_LIMIT = 3  // this many in a row = counter really moved
-        const val SEED_GAIN = 0.96      // initial speed->distance scale (speedo ~4% high)
+        const val SEED_GAIN = 1.0       // trust raw speed integral (matched car trip in logs)
+        const val CALIB_MIN_KM = 16.0   // calibrate gain only past this raw distance
     }
 }
