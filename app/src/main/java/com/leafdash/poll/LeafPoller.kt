@@ -43,8 +43,12 @@ class LeafPoller(
     internal var distanceKm: Double? = null   // smooth session distance (km, for tracker)
         private set
     private var odoAnchorKm: Double? = null
-    private var sessionDist = 0.0            // speed-integrated distance since anchor
+    private var sessionDist = 0.0            // raw speed-integrated distance since anchor
     private var lastSpeedMs = 0L
+    private var speedGain = 0.96             // speed->distance scale, calibrated to odometer
+    private var calibOdo: Double? = null     // odo km at first tick (calibration start)
+    private var calibSess = 0.0              // raw sessionDist at first tick
+    private var lastTickOdo = 0.0
     private var odoRejects = 0               // consecutive implausible odo readings
     private var lastUnitsMiles: Boolean? = null
 
@@ -199,13 +203,13 @@ class LeafPoller(
     /**
      * Fold one odometer reading + speed sample into the smooth session distance.
      *
-     * The raw counter is a truncated integer (km or mi), so the true distance
-     * since the anchor lies in (odoDelta - 1, odoDelta + 1); the speed integral
-     * is clamped to those bounds. Readings that go backwards or jump implausibly
-     * within one cycle are corrupt BT reads and dropped - unless they persist
-     * ([ODO_REJECT_LIMIT] in a row), which means the counter really moved, so
-     * accept and re-anchor. A unit toggle changes the km conversion scale, so it
-     * re-anchors too.
+     * Distance is the speed integral (smooth), scaled by a [speedGain] that is
+     * self-calibrated from odometer tick-to-tick spans (speedometers read a few
+     * percent optimistic). The truncated odometer is NOT used as a hard bound —
+     * doing so froze the estimate for most of each mile then jumped at the tick,
+     * because the anchor lands mid-mile. Corrupt/backwards odometer reads are
+     * dropped unless they persist ([ODO_REJECT_LIMIT] in a row = a real jump,
+     * re-anchor). A unit toggle re-anchors too.
      */
     internal fun updateDistance(reading: Double?, speedKmh: Double?, nowMs: Long) {
         if (reading != null) {
@@ -235,15 +239,22 @@ class LeafPoller(
             lastSpeedMs = nowMs
         }
         if (odoKmConv != null) {
-            if (odoAnchorKm == null) { odoAnchorKm = odoKmConv; sessionDist = 0.0 }
-            val odoDelta = (odoKmConv - odoAnchorKm!!).coerceAtLeast(0.0)
-            // odometer is truncated to whole km/mi: once it reads N, distance is
-            // in [odoDelta, odoDelta + one tick). Lower bound = odoDelta keeps the
-            // speed integral from lagging km-by-km behind the odometer.
-            // lead cap: let the smooth integral run at most this far past the
-            // last confirmed odometer marker (keeps it from drifting ~1 tick ahead)
-            sessionDist = sessionDist.coerceIn(odoDelta, odoDelta + LEAD_CAP_KM)
-            distanceKm = odoAnchorKm!! + sessionDist
+            if (odoAnchorKm == null) {
+                odoAnchorKm = odoKmConv; sessionDist = 0.0
+                speedGain = SEED_GAIN; calibOdo = null; calibSess = 0.0; lastTickOdo = odoKmConv
+            }
+            // recalibrate gain only when the odometer ticks (stable between ticks);
+            // measure from the first tick so the mid-mile anchor offset is excluded
+            if (odoKmConv > lastTickOdo + 1e-6) {
+                val c0 = calibOdo
+                if (c0 == null) { calibOdo = odoKmConv; calibSess = sessionDist }
+                else {
+                    val rawSpan = sessionDist - calibSess
+                    if (rawSpan > 1.0) speedGain = ((odoKmConv - c0) / rawSpan).coerceIn(0.7, 1.3)
+                }
+                lastTickOdo = odoKmConv
+            }
+            distanceKm = odoAnchorKm!! + sessionDist * speedGain
         }
     }
 
@@ -278,6 +289,6 @@ class LeafPoller(
         // is seconds; even 250 km/h moves it by ~1)
         const val MAX_ODO_STEP = 10.0
         const val ODO_REJECT_LIMIT = 3  // this many in a row = counter really moved
-        const val LEAD_CAP_KM = 0.6     // max the smooth integral leads the odometer
+        const val SEED_GAIN = 0.96      // initial speed->distance scale (speedo ~4% high)
     }
 }

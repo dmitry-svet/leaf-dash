@@ -12,25 +12,26 @@ class LeafPollerTest {
 
     private fun poller() = LeafPoller(MockTransport(emptyMap()))
 
-    @Test fun distanceLeadIsCapped() {
+    @Test fun distanceIsSpeedIntegralScaledByGain() {
         val p = poller()
         var t = 1_000L
+        p.updateDistance(1000.0, 90.0, t)  // anchor
+        t += 240_000                       // 4 min at 90 km/h = 6 km raw integral
         p.updateDistance(1000.0, 90.0, t)
-        t += 240_000                       // 4 min at 90 km/h = 6 km integral
-        p.updateDistance(1000.0, 90.0, t)  // odo still 1000 -> integral over-read
-        assertEquals(1000.6, p.distanceKm!!, 1e-6)  // capped at odo + LEAD_CAP_KM
+        // 1000 + 6.0 * SEED_GAIN(0.96); smooth, not clamped to the odometer
+        assertEquals(1005.76, p.distanceKm!!, 1e-6)
     }
 
-    @Test fun odoTickPullsDistanceUpToMarker() {
+    @Test fun odoTickDoesNotJumpDistance() {
         val p = poller()
         var t = 1_000L
         p.updateDistance(1000.0, 30.0, t)
-        t += 48_000                        // 0.4 km at 30 km/h (speed under-reads)
+        t += 48_000                        // 0.4 km raw at 30 km/h
         p.updateDistance(1000.0, 30.0, t)
-        assertEquals(1000.4, p.distanceKm!!, 1e-6)
+        val before = p.distanceKm!!
         t += 1_000
-        p.updateDistance(1001.0, 30.0, t)  // odo ticks over: marker passed
-        assertEquals(1001.0, p.distanceKm!!, 1e-6)  // pulled up, no km-by-km lag
+        p.updateDistance(1001.0, 30.0, t)  // odo ticks over: no snap/jump
+        assertEquals(before + 30.0 * (1_000.0 / 3_600_000.0) * 0.96, p.distanceKm!!, 1e-6)
     }
 
     @Test fun backwardsOdoReadingRejected() {
