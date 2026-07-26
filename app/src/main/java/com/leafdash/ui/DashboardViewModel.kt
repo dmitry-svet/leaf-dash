@@ -76,7 +76,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tripStore.saveUnitsMiles(miles) }
     }
 
-    private var lastLinkLossMs = 0L
+    @Volatile private var lastActiveMs = 0L   // last time we had live vehicle data
 
     fun connect(transport: Transport, active: Boolean) {
         if (sessionJob?.isActive == true) return
@@ -86,10 +86,11 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         // auto-reconnect loop racing a manual connect) hits the guard above
         sessionJob = viewModelScope.launch {
             // reuse the tracker across quick reconnects (BT dropout at a light):
-            // rebaseline only. Reset "since car on" just on app launch or after a
-            // long gap (car really was off).
+            // rebaseline only. Reset "since car on" on app launch or after a long
+            // gap since the last LIVE data (car really was off - not just failed
+            // reconnect attempts, which don't update lastActiveMs).
             val existing = tracker
-            val gapMs = System.currentTimeMillis() - lastLinkLossMs
+            val gapMs = System.currentTimeMillis() - lastActiveMs
             val t = if (existing != null) {
                 if (gapMs > CAR_OFF_GAP_MS) existing.onSessionStart() else existing.rebaseline()
                 existing
@@ -104,6 +105,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             collectJob?.cancel()
             collectJob = viewModelScope.launch {
                 p.state.collect { ps ->
+                    if (ps.connected) lastActiveMs = System.currentTimeMillis()
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
                         t.onSample(ps.leaf.kwhRemaining, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
@@ -123,7 +125,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             withContext(Dispatchers.IO) { p.runBlocking() }
-            lastLinkLossMs = System.currentTimeMillis()   // session ended (drop/off)
         }
     }
 
