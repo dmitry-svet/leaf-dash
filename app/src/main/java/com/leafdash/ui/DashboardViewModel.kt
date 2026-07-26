@@ -81,6 +81,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun connect(transport: Transport, active: Boolean) {
         if (sessionJob?.isActive == true) return
         autoReconnect = true
+        com.leafdash.LeafService.start(getApplication())   // keep alive in background
         // assigned before this returns, so a second connect() (double-tap, or the
         // auto-reconnect loop racing a manual connect) hits the guard above
         sessionJob = viewModelScope.launch {
@@ -128,6 +129,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     fun disconnect() {
         autoReconnect = false      // manual disconnect stops auto-retry
+        com.leafdash.LeafService.stop(getApplication())
         poller?.stop()
         collectJob?.cancel()
         // keep last data on screen, but reflect disconnected status

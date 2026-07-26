@@ -95,10 +95,13 @@ class MainActivity : ComponentActivity() {
         fun onConnect() {
             if (hasBtPermission(context)) showPicker = true
             else permLauncher.launch(
-                arrayOf(
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.BLUETOOTH_SCAN,
-                )
+                buildList {
+                    add(Manifest.permission.BLUETOOTH_CONNECT)
+                    add(Manifest.permission.BLUETOOTH_SCAN)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }.toTypedArray()
             )
         }
 
