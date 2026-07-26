@@ -11,6 +11,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     odoMiles: Boolean,
     onSetUnits: (Boolean) -> Unit,
+    logEnabled: Boolean,
+    onSetLog: (Boolean) -> Unit,
     logPath: String,
     onBack: () -> Unit,
 ) {
@@ -56,8 +59,17 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall,
         )
 
-        Text("Distance log", style = MaterialTheme.typography.titleMedium)
-        Text(logPath, style = MaterialTheme.typography.bodySmall)
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Distance log", style = MaterialTheme.typography.titleMedium)
+            Switch(checked = logEnabled, onCheckedChange = onSetLog)
+        }
+        if (logEnabled) {
+            Text(logPath, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 

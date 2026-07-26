@@ -38,6 +38,12 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[UNITS_MILES] = miles }
     }
 
+    suspend fun loadLogEnabled(): Boolean = context.tripDataStore.data.first()[LOG_ENABLED] ?: false
+
+    suspend fun saveLogEnabled(on: Boolean) {
+        context.tripDataStore.edit { it[LOG_ENABLED] = on }
+    }
+
     suspend fun loadLastDevice(): String? = context.tripDataStore.data.first()[LAST_DEVICE]
 
     suspend fun saveLastDevice(address: String) {
@@ -68,6 +74,7 @@ class TripStore(private val context: Context) {
         val LIFETIME_KM = doublePreferencesKey("lifetime_km")
         val LIFETIME_KWH = doublePreferencesKey("lifetime_kwh")
         val UNITS_MILES = booleanPreferencesKey("units_miles")
+        val LOG_ENABLED = booleanPreferencesKey("log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2

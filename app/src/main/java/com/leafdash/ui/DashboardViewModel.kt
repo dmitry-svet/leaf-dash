@@ -43,12 +43,22 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val _lastDevice = MutableStateFlow<String?>(null)
     val lastDevice: StateFlow<String?> = _lastDevice.asStateFlow()
 
+    private val _logEnabled = MutableStateFlow(false)
+    val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
+
     init {
         viewModelScope.launch {
             unitsMiles = tripStore.loadUnitsMiles()
             _state.value = _state.value.copy(odoMiles = unitsMiles)
             _lastDevice.value = tripStore.loadLastDevice()
+            _logEnabled.value = tripStore.loadLogEnabled()
         }
+    }
+
+    /** Enable/disable the diagnostic CSV log; persisted. */
+    fun setLog(on: Boolean) {
+        _logEnabled.value = on
+        viewModelScope.launch { tripStore.saveLogEnabled(on) }
     }
 
     /** Remember the Bluetooth device for auto-reconnect next launch. */
@@ -136,6 +146,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun logLine(line: String) {
+        if (!_logEnabled.value) return
         val f = logFile ?: return
         runCatching {
             if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
