@@ -1,5 +1,6 @@
 package com.leafdash.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +14,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -119,8 +119,7 @@ fun DashboardScreen(
         TripCard("Lifetime", state.lifetime, leaf.kwhRemaining, refEff)
         TripCard("Since last charge", state.lastCharge, leaf.kwhRemaining, refEff)
         TripCard("Since car on", state.carOn, leaf.kwhRemaining, refEff)
-        TripCard("Trip", state.trip, leaf.kwhRemaining, refEff)
-        OutlinedButton(onClick = onResetTrip) { Text("Reset trip") }
+        TripCard("Trip", state.trip, leaf.kwhRemaining, refEff, onReset = onResetTrip)
 
         // connection / debug info
         if (state.debug.isNotEmpty()) {
@@ -180,7 +179,13 @@ private fun Tile(label: String, value: String, modifier: Modifier = Modifier, bi
 }
 
 @Composable
-private fun TripCard(title: String, w: TripWindow, kwhRemaining: Double?, refEff: Double) {
+private fun TripCard(
+    title: String,
+    w: TripWindow,
+    kwhRemaining: Double?,
+    refEff: Double,
+    onReset: (() -> Unit)? = null,
+) {
     // efficiency: this window's own once it has a first km of real data, else
     // the stable reference
     val eff = w.kwhPer100?.takeIf { w.km >= 1.0 && it > 0 } ?: refEff
@@ -191,7 +196,22 @@ private fun TripCard(title: String, w: TripWindow, kwhRemaining: Double?, refEff
         else kwhRemaining?.let { it / eff.coerceIn(5.0, 60.0) * 100.0 }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                if (onReset != null) {
+                    Text(
+                        "Reset",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onReset).padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Metric("km", fmt(w.km, 1), Modifier.weight(1f))
                 Metric("kWh", fmt(w.kwh, 2), Modifier.weight(1f))
