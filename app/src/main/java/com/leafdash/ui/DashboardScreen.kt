@@ -36,6 +36,7 @@ fun DashboardScreen(
     onDisconnect: () -> Unit,
     onResetTrip: () -> Unit,
     onOpenSettings: () -> Unit,
+    showDiag: Boolean = false,
 ) {
     Column(
         Modifier
@@ -121,8 +122,8 @@ fun DashboardScreen(
         TripCard("Since car on", state.carOn, leaf.kwhRemaining, refEff)
         TripCard("Trip", state.trip, leaf.kwhRemaining, refEff, onReset = onResetTrip)
 
-        // connection / debug info
-        if (state.debug.isNotEmpty()) {
+        // connection / debug info (only when diagnostics/log is enabled)
+        if (showDiag && state.debug.isNotEmpty()) {
             Text(
                 "Debug",
                 style = MaterialTheme.typography.titleMedium,
@@ -138,7 +139,7 @@ fun DashboardScreen(
         }
 
         // diagnostic: raw ISO-TP responses (active mode, for offset mapping)
-        if (state.raw.isNotEmpty()) {
+        if (showDiag && state.raw.isNotEmpty()) {
             Text(
                 "Raw (diagnostic)",
                 style = MaterialTheme.typography.titleMedium,

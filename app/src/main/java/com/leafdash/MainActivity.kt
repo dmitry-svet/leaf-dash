@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        val diagOn by vm.logEnabled.collectAsState()
         DashboardScreen(
             state = state,
             onConnect = ::onConnect,
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
             onDisconnect = { vm.disconnect() },
             onResetTrip = { vm.resetTrip() },
             onOpenSettings = { showSettings = true },
+            showDiag = diagOn,
         )
 
         if (showPicker && adapter != null) {

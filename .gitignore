@@ -14,3 +14,8 @@
 
 # LeafSpy APK - copyrighted commercial app (reverse-engineering source), do not publish
 *.apk
+
+# signing secrets - never commit
+keystore.properties
+*.jks
+*.keystore
