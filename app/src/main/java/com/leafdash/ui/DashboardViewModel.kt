@@ -81,7 +81,10 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun connect(transport: Transport, active: Boolean) {
         if (sessionJob?.isActive == true) return
         autoReconnect = true
-        com.leafdash.LeafService.start(getApplication())   // keep alive in background
+        // foreground service only for a real BT session: the connectedDevice FGS
+        // type requires BLUETOOTH_CONNECT on API 34+ (demo has no BT permission),
+        // and starting it can throw if we're in the background.
+        if (active) runCatching { com.leafdash.LeafService.start(getApplication()) }
         // assigned before this returns, so a second connect() (double-tap, or the
         // auto-reconnect loop racing a manual connect) hits the guard above
         sessionJob = viewModelScope.launch {
@@ -130,7 +133,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     fun disconnect() {
         autoReconnect = false      // manual disconnect stops auto-retry
-        com.leafdash.LeafService.stop(getApplication())
+        runCatching { com.leafdash.LeafService.stop(getApplication()) }
         poller?.stop()
         collectJob?.cancel()
         // keep last data on screen, but reflect disconnected status

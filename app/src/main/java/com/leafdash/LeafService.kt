@@ -33,10 +33,17 @@ class LeafService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setOngoing(true)
             .build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
-        } else {
-            startForeground(1, n)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            } else {
+                startForeground(1, n)
+            }
+        } catch (e: Exception) {
+            // e.g. missing BLUETOOTH_CONNECT for the connectedDevice type (API 34),
+            // or a background-start restriction: don't crash, just don't stay foreground
+            stopSelf()
+            return START_NOT_STICKY
         }
         return START_STICKY
     }

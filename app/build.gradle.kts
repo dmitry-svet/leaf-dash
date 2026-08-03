@@ -17,10 +17,10 @@ android {
 
     defaultConfig {
         applicationId = "com.svet.leafdash"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 34
-        versionCode = 55
-        versionName = "0.55"
+        versionCode = 57
+        versionName = "0.57"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -31,14 +31,18 @@ android {
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
+                // v1 (JAR) too: some MIUI/older installers reject v2-only APKs
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release")
         }
