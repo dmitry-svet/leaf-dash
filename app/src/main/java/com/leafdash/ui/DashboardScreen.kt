@@ -1,5 +1,6 @@
 package com.leafdash.ui
 
+import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -86,41 +88,19 @@ fun DashboardScreen(
             Text(state.connectMsg, style = MaterialTheme.typography.bodyMedium)
         }
 
-        // live tiles
-        val leaf = state.leaf
-        val tempStr = if (leaf.batteryTempsC.isEmpty()) "--"
-            else leaf.batteryTempsC.joinToString(" / ") { "%.0f".format(it) } + " C"
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("SOH", fmt(leaf.sohPercent, 0, "%"), Modifier.weight(1f))
-            Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
-            Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+        // live tiles + energy economy: side by side in landscape, stacked in
+        // portrait
+        val landscape =
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (landscape) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LiveTiles(state, Modifier.weight(1f))
+                EnergyEconomy(state, onResetTrip, Modifier.weight(1f))
+            }
+        } else {
+            LiveTiles(state)
+            EnergyEconomy(state, onResetTrip)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("Bat temp", tempStr, Modifier.weight(1.4f))
-            Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
-            Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
-            Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f), big = true)
-        }
-
-        // energy economy: km from odometer, kWh from battery drop.
-        // Always shown - keeps last values after disconnect.
-        Text(
-            "Energy economy",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
-        // stable efficiency for short windows: prefer the all-time lifetime
-        // average, else the smoothed EMA
-        val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
-            ?: state.avgKwhPer100
-        TripCard("Lifetime", state.lifetime, leaf.kwhRemaining, refEff)
-        TripCard("Since last charge", state.lastCharge, leaf.kwhRemaining, refEff)
-        TripCard("Since car on", state.carOn, leaf.kwhRemaining, refEff)
-        TripCard("Trip", state.trip, leaf.kwhRemaining, refEff, onReset = onResetTrip)
 
         // connection / debug info (only when diagnostics/log is enabled)
         if (showDiag && state.debug.isNotEmpty()) {
@@ -160,6 +140,52 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LiveTiles(state: DashState, modifier: Modifier = Modifier) {
+    val leaf = state.leaf
+    val tempStr = if (leaf.batteryTempsC.isEmpty()) "--"
+        else leaf.batteryTempsC.joinToString(" / ") { "%.0f".format(it) } + " C"
+
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tile("SOH", fmt(leaf.sohPercent, 0, "%"), Modifier.weight(1f))
+            Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
+            Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tile("Bat temp", tempStr, Modifier.weight(1.4f))
+            Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
+            Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
+            Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f), big = true)
+        }
+    }
+}
+
+// energy economy: km from odometer, kWh from battery drop.
+// Always shown - keeps last values after disconnect.
+@Composable
+private fun EnergyEconomy(state: DashState, onResetTrip: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            "Energy economy",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        // stable efficiency for short windows: prefer the all-time lifetime
+        // average, else the smoothed EMA
+        val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
+            ?: state.avgKwhPer100
+        val kwhRemaining = state.leaf.kwhRemaining
+        TripCard("Lifetime", state.lifetime, kwhRemaining, refEff)
+        TripCard("Since last charge", state.lastCharge, kwhRemaining, refEff)
+        TripCard("Since car on", state.carOn, kwhRemaining, refEff)
+        TripCard("Trip", state.trip, kwhRemaining, refEff, onReset = onResetTrip)
     }
 }
 
