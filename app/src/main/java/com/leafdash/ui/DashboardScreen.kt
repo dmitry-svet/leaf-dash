@@ -18,10 +18,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,7 +100,7 @@ fun DashboardScreen(
         if (landscape) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LiveTiles(state, Modifier.weight(1f))
-                EnergyEconomy(state, onResetTrip, Modifier.weight(1f))
+                EnergyEconomy(state, onResetTrip, Modifier.weight(1.4f))
             }
         } else {
             LiveTiles(state)
@@ -189,17 +194,31 @@ private fun EnergyEconomy(state: DashState, onResetTrip: () -> Unit, modifier: M
     }
 }
 
+/** Single-line bold value that shrinks its font until it fits the width. */
+@Composable
+private fun FitText(value: String, style: TextStyle, modifier: Modifier = Modifier) {
+    var scale by remember(value) { mutableFloatStateOf(1f) }
+    Text(
+        value,
+        style = style,
+        fontSize = style.fontSize * scale,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { if (it.hasVisualOverflow && scale > 0.4f) scale *= 0.9f },
+        modifier = modifier,
+    )
+}
+
 @Composable
 private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Card(modifier) {
         Column(Modifier.padding(10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
-            Text(
+            FitText(
                 value,
                 style = if (big) MaterialTheme.typography.headlineLarge
                 else MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
             )
         }
     }
@@ -254,12 +273,7 @@ private fun TripCard(
 private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        Text(
-            value,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
+        FitText(value, style = MaterialTheme.typography.headlineMedium)
     }
 }
 
