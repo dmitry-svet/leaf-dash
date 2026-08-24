@@ -8,7 +8,8 @@ LeafSpy code, assets, or branding.
 
 ## Features
 
-Single screen (landscape puts live tiles and energy economy side by side):
+Single screen (landscape puts live tiles beside a compact energy table —
+one row per window, legend on top):
 
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
