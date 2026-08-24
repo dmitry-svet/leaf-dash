@@ -4,10 +4,13 @@ import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -99,9 +102,14 @@ fun DashboardScreen(
         val landscape =
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (landscape) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LiveTiles(state, Modifier.weight(1f))
-                EnergyEconomy(state, onResetTrip, Modifier.weight(1.4f), compact = true)
+            // equal-height blocks: the taller one sets the height, rows in the
+            // other spread out to match
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                LiveTiles(state, Modifier.weight(1f).fillMaxHeight(), stretch = true)
+                EnergyEconomy(state, onResetTrip, Modifier.weight(1.4f).fillMaxHeight(), compact = true)
             }
         } else {
             LiveTiles(state)
@@ -150,12 +158,15 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun LiveTiles(state: DashState, modifier: Modifier = Modifier) {
+private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: Boolean = false) {
     val leaf = state.leaf
     val tempStr = if (leaf.batteryTempsC.isEmpty()) "--"
         else leaf.batteryTempsC.joinToString(" / ") { "%.0f".format(it) } + " C"
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier,
+        verticalArrangement = if (stretch) Arrangement.SpaceBetween else Arrangement.spacedBy(6.dp),
+    ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("SOH", fmt(leaf.sohPercent, 0, "%"), Modifier.weight(1f))
             Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
@@ -191,7 +202,10 @@ private fun EnergyEconomy(
         // landscape: one table card, window name in the first column, metric
         // legend once on top — all 4 windows fit the screen
         Card(modifier) {
-            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                Modifier.fillMaxHeight().padding(10.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Spacer(Modifier.weight(1.5f))
                     for (label in listOf("km", "kWh", "kWh/100", "range km")) {
