@@ -44,6 +44,9 @@ class LogStreamer {
                 conn.readTimeout = 3_000
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "text/plain")
+                // free ngrok tunnels answer with an interstitial page unless
+                // this header is present
+                conn.setRequestProperty("ngrok-skip-browser-warning", "1")
                 conn.outputStream.use { it.write(body) }
                 conn.responseCode in 200..299
             } finally {
