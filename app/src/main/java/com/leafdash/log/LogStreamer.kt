@@ -66,9 +66,12 @@ class LogStreamer {
         worker.interrupt()
     }
 
-    private companion object {
-        const val FLUSH_MS = 3_000L
-        const val MAX_LINES = 5_000   // ~40 min of 2 Hz samples
-        const val MAX_BATCH = 200
+    companion object {
+        /** Default endpoint: tools/serve_log_ngrok.sh on the PC. */
+        const val DEFAULT_URL = "https://shantae-unhygienic-yamileth.ngrok-free.dev/log"
+
+        private const val FLUSH_MS = 3_000L
+        private const val MAX_LINES = 5_000   // ~40 min of 2 Hz samples
+        private const val MAX_BATCH = 200
     }
 }

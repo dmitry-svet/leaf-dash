@@ -44,10 +44,18 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[LOG_ENABLED] = on }
     }
 
-    suspend fun loadLogUrl(): String = context.tripDataStore.data.first()[LOG_URL] ?: ""
+    suspend fun loadLogUrl(): String =
+        context.tripDataStore.data.first()[LOG_URL] ?: com.leafdash.log.LogStreamer.DEFAULT_URL
 
     suspend fun saveLogUrl(url: String) {
         context.tripDataStore.edit { it[LOG_URL] = url }
+    }
+
+    suspend fun loadStreamEnabled(): Boolean =
+        context.tripDataStore.data.first()[STREAM_ENABLED] ?: false
+
+    suspend fun saveStreamEnabled(on: Boolean) {
+        context.tripDataStore.edit { it[STREAM_ENABLED] = on }
     }
 
     suspend fun loadLastDevice(): String? = context.tripDataStore.data.first()[LAST_DEVICE]
@@ -82,6 +90,7 @@ class TripStore(private val context: Context) {
         val UNITS_MILES = booleanPreferencesKey("units_miles")
         val LOG_ENABLED = booleanPreferencesKey("log_enabled")
         val LOG_URL = stringPreferencesKey("log_url")
+        val STREAM_ENABLED = booleanPreferencesKey("stream_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2

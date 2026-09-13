@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,8 @@ fun SettingsScreen(
     logPath: String,
     logUrl: String,
     onSetLogUrl: (String) -> Unit,
+    streamEnabled: Boolean,
+    onSetStream: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     Column(
@@ -72,20 +75,28 @@ fun SettingsScreen(
         }
         if (logEnabled) {
             Text(logPath, style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(
-                value = logUrl,
-                onValueChange = onSetLogUrl,
-                label = { Text("Stream log to URL") },
-                placeholder = { Text("http://192.168.1.10:8765/log") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                "Optional: POST log lines to this endpoint (tools/log_server.py " +
-                    "on the PC). Blank = file only.",
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Stream log to PC", style = MaterialTheme.typography.titleMedium)
+            Checkbox(checked = streamEnabled, onCheckedChange = onSetStream)
+        }
+        OutlinedTextField(
+            value = logUrl,
+            onValueChange = onSetLogUrl,
+            label = { Text("Log server URL") },
+            singleLine = true,
+            enabled = streamEnabled,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            "POST log lines to this endpoint (tools/serve_log_ngrok.sh on the PC).",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

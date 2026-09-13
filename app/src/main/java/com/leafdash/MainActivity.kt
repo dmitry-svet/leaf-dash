@@ -108,6 +108,7 @@ class MainActivity : ComponentActivity() {
         if (showSettings) {
             val logOn by vm.logEnabled.collectAsState()
             val logUrl by vm.logUrl.collectAsState()
+            val streamOn by vm.streamEnabled.collectAsState()
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
@@ -116,6 +117,8 @@ class MainActivity : ComponentActivity() {
                 logPath = vm.logPath,
                 logUrl = logUrl,
                 onSetLogUrl = { vm.setLogUrl(it) },
+                streamEnabled = streamOn,
+                onSetStream = { vm.setStream(it) },
                 onBack = { showSettings = false },
             )
             return

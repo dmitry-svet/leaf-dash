@@ -46,8 +46,11 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val _logEnabled = MutableStateFlow(false)
     val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
 
-    private val _logUrl = MutableStateFlow("")
+    private val _logUrl = MutableStateFlow(com.leafdash.log.LogStreamer.DEFAULT_URL)
     val logUrl: StateFlow<String> = _logUrl.asStateFlow()
+
+    private val _streamEnabled = MutableStateFlow(false)
+    val streamEnabled: StateFlow<Boolean> = _streamEnabled.asStateFlow()
 
     private val streamer = com.leafdash.log.LogStreamer()
 
@@ -58,6 +61,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _lastDevice.value = tripStore.loadLastDevice()
             _logEnabled.value = tripStore.loadLogEnabled()
             _logUrl.value = tripStore.loadLogUrl()
+            _streamEnabled.value = tripStore.loadStreamEnabled()
             streamer.url = _logUrl.value
         }
     }
@@ -68,11 +72,17 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tripStore.saveLogEnabled(on) }
     }
 
-    /** HTTP endpoint the log is streamed to (blank = off); persisted. */
+    /** HTTP endpoint the log is streamed to; persisted. */
     fun setLogUrl(url: String) {
         _logUrl.value = url
         streamer.url = url.trim()
         viewModelScope.launch { tripStore.saveLogUrl(url) }
+    }
+
+    /** Enable/disable streaming log lines to the URL; persisted. */
+    fun setStream(on: Boolean) {
+        _streamEnabled.value = on
+        viewModelScope.launch { tripStore.saveStreamEnabled(on) }
     }
 
     /** Remember the Bluetooth device for auto-reconnect next launch. */
@@ -166,8 +176,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun logLine(line: String) {
+        if (_streamEnabled.value) streamer.add(line)
         if (!_logEnabled.value) return
-        streamer.add(line)
         val f = logFile ?: return
         runCatching {
             if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
