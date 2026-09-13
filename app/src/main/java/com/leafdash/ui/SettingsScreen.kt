@@ -11,6 +11,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,6 +35,8 @@ fun SettingsScreen(
     logEnabled: Boolean,
     onSetLog: (Boolean) -> Unit,
     logPath: String,
+    logUrl: String,
+    onSetLogUrl: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     Column(
@@ -69,6 +72,19 @@ fun SettingsScreen(
         }
         if (logEnabled) {
             Text(logPath, style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = logUrl,
+                onValueChange = onSetLogUrl,
+                label = { Text("Stream log to URL") },
+                placeholder = { Text("http://192.168.1.10:8765/log") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "Optional: POST log lines to this endpoint (tools/log_server.py " +
+                    "on the PC). Blank = file only.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }

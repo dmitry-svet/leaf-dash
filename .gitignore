@@ -19,3 +19,6 @@
 keystore.properties
 *.jks
 *.keystore
+
+# streamed diagnostic logs from the app (tools/log_server.py)
+/logs/

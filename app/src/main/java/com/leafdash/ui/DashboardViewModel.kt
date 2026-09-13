@@ -46,12 +46,19 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val _logEnabled = MutableStateFlow(false)
     val logEnabled: StateFlow<Boolean> = _logEnabled.asStateFlow()
 
+    private val _logUrl = MutableStateFlow("")
+    val logUrl: StateFlow<String> = _logUrl.asStateFlow()
+
+    private val streamer = com.leafdash.log.LogStreamer()
+
     init {
         viewModelScope.launch {
             unitsMiles = tripStore.loadUnitsMiles()
             _state.value = _state.value.copy(odoMiles = unitsMiles)
             _lastDevice.value = tripStore.loadLastDevice()
             _logEnabled.value = tripStore.loadLogEnabled()
+            _logUrl.value = tripStore.loadLogUrl()
+            streamer.url = _logUrl.value
         }
     }
 
@@ -59,6 +66,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun setLog(on: Boolean) {
         _logEnabled.value = on
         viewModelScope.launch { tripStore.saveLogEnabled(on) }
+    }
+
+    /** HTTP endpoint the log is streamed to (blank = off); persisted. */
+    fun setLogUrl(url: String) {
+        _logUrl.value = url
+        streamer.url = url.trim()
+        viewModelScope.launch { tripStore.saveLogUrl(url) }
     }
 
     /** Remember the Bluetooth device for auto-reconnect next launch. */
@@ -153,10 +167,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun logLine(line: String) {
         if (!_logEnabled.value) return
+        streamer.add(line)
         val f = logFile ?: return
         runCatching {
             if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
-            if (f.length() == 0L) f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist\n")
+            if (f.length() == 0L) {
+                f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC\n")
+            }
             f.appendText(line + "\n")
         }
     }
@@ -166,6 +183,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         disconnect()
+        streamer.stop()
         super.onCleared()
     }
 

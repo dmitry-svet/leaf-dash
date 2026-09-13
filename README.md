@@ -27,6 +27,11 @@ one row per window, legend on top):
 - **Robust sessions**: auto-reconnect every 10 s; a watchdog kills a hung
   link (frozen dongle, car turned off) after 30 s so reconnect can take over.
 - **Demo mode**: runs the whole app with synthetic data — no car needed.
+- **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
+  soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, optionally
+  streamed live to a PC — run `python3 tools/log_server.py` and set
+  "Stream log to URL" to `http://<pc-ip>:8765/log` (lines are buffered and
+  retried while the endpoint is unreachable).
 
 ## Build & run
 

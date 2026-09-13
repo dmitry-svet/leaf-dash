@@ -107,12 +107,15 @@ class MainActivity : ComponentActivity() {
 
         if (showSettings) {
             val logOn by vm.logEnabled.collectAsState()
+            val logUrl by vm.logUrl.collectAsState()
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
                 logEnabled = logOn,
                 onSetLog = { vm.setLog(it) },
                 logPath = vm.logPath,
+                logUrl = logUrl,
+                onSetLogUrl = { vm.setLogUrl(it) },
                 onBack = { showSettings = false },
             )
             return

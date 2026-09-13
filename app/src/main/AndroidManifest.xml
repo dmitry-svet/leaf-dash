@@ -14,12 +14,16 @@
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 
     <!-- keep the BT link alive in the background -->
+    <!-- log streaming to a local PC (Settings: Stream log to URL) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="LeafDash"

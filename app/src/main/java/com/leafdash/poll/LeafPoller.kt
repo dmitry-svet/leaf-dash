@@ -184,10 +184,15 @@ class LeafPoller(
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
                 // diagnostic CSV: t,odoRaw,odoKm,spd,b6(counter),sessDist,dist
+                // + energy fields (soc,gids,ah,packV,packA,kwh,batC) for economy
+                // debugging; energy values use Double.toString (locale-safe)
                 logLine(
                     "${System.currentTimeMillis()},${odometerRaw ?: ""}," +
                         "${odoDisplayKm ?: ""},${speed ?: ""},${sf?.u(6) ?: ""}," +
-                        "${"%.3f".format(sessionDist)},${distanceKm?.let { "%.3f".format(it) } ?: ""}",
+                        "${"%.3f".format(sessionDist)},${distanceKm?.let { "%.3f".format(it) } ?: ""}," +
+                        "${leaf.socPercent ?: ""},${leaf.gids ?: ""},${leaf.ahCapacity ?: ""}," +
+                        "${leaf.packVolts ?: ""},${leaf.packAmps ?: ""},${leaf.kwhRemaining ?: ""}," +
+                        "${leaf.batteryTempsC.firstOrNull() ?: ""}",
                 )
 
                 elm.setRxAddr(lbcRxAddr)   // restore filter for battery polling
