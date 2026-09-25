@@ -177,6 +177,21 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
             Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
         }
+        // weakest cell dictates when the car cuts power (turtle) - warn early
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val minColor = leaf.cellMinV?.let {
+                when {
+                    it < 3.15 -> Color(0xFFC62828)   // red: turtle imminent
+                    it < 3.3 -> Color(0xFFB58900)    // amber: deep sag
+                    else -> null
+                }
+            }
+            Tile("Cell min", fmt(leaf.cellMinV, 3, " V"), Modifier.weight(1f), valueColor = minColor)
+            val spread = if (leaf.cellMinV != null && leaf.cellMaxV != null) {
+                "%.0f mV".format((leaf.cellMaxV - leaf.cellMinV) * 1000.0)
+            } else "--"
+            Tile("Cell spread", spread, Modifier.weight(1f))
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
             Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f), big = true)
@@ -197,7 +212,10 @@ private fun EnergyEconomy(
     // average, else the smoothed EMA
     val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
         ?: state.avgKwhPer100
-    val kwhRemaining = state.leaf.kwhRemaining
+    // usable energy for range: weak cells make the pack bottom unusable
+    val kwhRemaining = state.leaf.kwhRemaining?.let {
+        (it - state.reserveKwh).coerceAtLeast(0.0)
+    }
     if (compact) {
         // landscape: one table card, window name in the first column, metric
         // legend once on top — all 4 windows fit the screen
@@ -279,13 +297,19 @@ private fun TripRow(
 
 /** Single-line bold value that shrinks its font until it fits the width. */
 @Composable
-private fun FitText(value: String, style: TextStyle, modifier: Modifier = Modifier) {
+private fun FitText(
+    value: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    color: Color? = null,
+) {
     var scale by remember(value) { mutableFloatStateOf(1f) }
     Text(
         value,
         style = style,
         fontSize = style.fontSize * scale,
         fontWeight = FontWeight.Bold,
+        color = color ?: Color.Unspecified,
         maxLines = 1,
         softWrap = false,
         onTextLayout = { if (it.hasVisualOverflow && scale > 0.4f) scale *= 0.9f },
@@ -294,7 +318,13 @@ private fun FitText(value: String, style: TextStyle, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false) {
+private fun Tile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    big: Boolean = false,
+    valueColor: Color? = null,
+) {
     Card(modifier) {
         Column(Modifier.padding(10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
@@ -302,6 +332,7 @@ private fun Tile(label: String, value: String, modifier: Modifier = Modifier, bi
                 value,
                 style = if (big) MaterialTheme.typography.headlineLarge
                 else MaterialTheme.typography.headlineSmall,
+                color = valueColor,
             )
         }
     }

@@ -18,7 +18,11 @@ one row per window, legend on top):
   range prediction. All windows count **app-connected distance only**
   (per-session odometer deltas; driving without the app is never counted).
   Range prediction is hidden (`--`) until a window has its first km, then uses
-  that window's own measured efficiency (clamped 5–60 kWh/100).
+  that window's own measured efficiency (clamped 5–60 kWh/100), applied to
+  the remaining energy minus the "Unusable capacity" setting (default 2 kWh:
+  weak cells cut power well above 0% SOC on degraded packs).
+- **Cell health tiles**: weakest cell voltage (amber < 3.3 V, red < 3.15 V —
+  turtle imminent) and min-max cell spread, from LBC group 2102.
   Stationary drain (heater/AC) counts as consumption; charging while parked
   does not go negative. Regen while moving counts.
 - **Distance**: smooth km = speed integral bounded to the coarse 0x5C5
@@ -107,7 +111,9 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 
 Active ISO-TP polling of the LBC (`GroupDecoder`, request `0x79B` / reply
 `0x7BB`, groups `2101`–`2106`, verified against a real AZE0): kWh remaining,
-SOC, SOH, Ah capacity, Hx, pack temps.
+SOC, SOH, Ah capacity, Hx, pack temps; group `2102` = 96 cell voltages
+(2 bytes each, mV) -> min cell V + spread tiles (weakest cell triggers
+turtle long before SOC hits 0 on a degraded pack).
 
 ## On-car checklist (phase 2 — do on the Leaf)
 

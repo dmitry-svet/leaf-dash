@@ -26,4 +26,7 @@ data class DashState(
     val odoKm: Double? = null,
     /** Smoothed lifetime efficiency (kWh/100 km) for stable range. */
     val avgKwhPer100: Double = 15.0,
+    /** Unusable bottom-of-pack energy (kWh, user setting): subtracted from
+     *  kWh remaining for range predictions (weak cells cut power early). */
+    val reserveKwh: Double = 0.0,
 )

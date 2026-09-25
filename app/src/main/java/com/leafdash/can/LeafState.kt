@@ -18,6 +18,9 @@ data class LeafState(
     val ahCapacity: Double? = null,
     val hx: Double? = null,
     val batteryTempsC: List<Double> = emptyList(),
+    /** Weakest / strongest cell voltage (V), from LBC group 2 (96 cells). */
+    val cellMinV: Double? = null,
+    val cellMaxV: Double? = null,
 ) {
     /** Instant DC power at the pack, kW. + discharge, - charge/regen. */
     val powerKw: Double?

@@ -52,6 +52,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val _streamEnabled = MutableStateFlow(false)
     val streamEnabled: StateFlow<Boolean> = _streamEnabled.asStateFlow()
 
+    private val _reserveKwh = MutableStateFlow(0.0)
+    val reserveKwh: StateFlow<Double> = _reserveKwh.asStateFlow()
+
     private val streamer = com.leafdash.log.LogStreamer()
 
     init {
@@ -62,8 +65,17 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _logEnabled.value = tripStore.loadLogEnabled()
             _logUrl.value = tripStore.loadLogUrl()
             _streamEnabled.value = tripStore.loadStreamEnabled()
+            _reserveKwh.value = tripStore.loadReserveKwh()
+            _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
             streamer.url = _logUrl.value
         }
+    }
+
+    /** Unusable bottom-of-pack energy for range prediction; persisted. */
+    fun setReserve(kwh: Double) {
+        _reserveKwh.value = kwh
+        _state.value = _state.value.copy(reserveKwh = kwh)
+        viewModelScope.launch { tripStore.saveReserveKwh(kwh) }
     }
 
     /** Enable/disable the diagnostic CSV log; persisted. */
@@ -148,6 +160,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                         lifetime = t.lifetime.copy(),
                         odoMiles = unitsMiles,
                         avgKwhPer100 = t.avgKwhPer100,
+                        reserveKwh = _reserveKwh.value,
                     )
                 }
             }
@@ -182,7 +195,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         runCatching {
             if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
             if (f.length() == 0L) {
-                f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC\n")
+                f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC,cellMin,cellMax\n")
             }
             f.appendText(line + "\n")
         }

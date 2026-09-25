@@ -15,7 +15,7 @@ import sys
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 LOG_DIR = pathlib.Path(__file__).resolve().parent.parent / "logs"
-HEADER = "t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC\n"
+HEADER = "t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC,cellMin,cellMax\n"
 
 
 class Handler(http.server.BaseHTTPRequestHandler):

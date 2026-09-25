@@ -58,7 +58,7 @@ class LeafPoller(
     @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
-    private val activeGroups = listOf("2101", "2103", "2104", "2105", "2106")
+    private val activeGroups = listOf("2101", "2102", "2103", "2104", "2105", "2106")
 
     /** LBC (battery) diagnostic response id; odometer broadcast id (car-CAN). */
     private val lbcRxAddr = "7BB"
@@ -192,7 +192,8 @@ class LeafPoller(
                         "${"%.3f".format(sessionDist)},${distanceKm?.let { "%.3f".format(it) } ?: ""}," +
                         "${leaf.socPercent ?: ""},${leaf.gids ?: ""},${leaf.ahCapacity ?: ""}," +
                         "${leaf.packVolts ?: ""},${leaf.packAmps ?: ""},${leaf.kwhRemaining ?: ""}," +
-                        "${leaf.batteryTempsC.firstOrNull() ?: ""}",
+                        "${leaf.batteryTempsC.firstOrNull() ?: ""}," +
+                        "${leaf.cellMinV ?: ""},${leaf.cellMaxV ?: ""}",
                 )
 
                 elm.setRxAddr(lbcRxAddr)   // restore filter for battery polling

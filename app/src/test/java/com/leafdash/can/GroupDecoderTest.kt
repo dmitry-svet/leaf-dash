@@ -33,6 +33,41 @@ class GroupDecoderTest {
         assertEquals(28.67, s.batteryTempC!!, 0.01) // (30+28+28)/3
     }
 
+    @Test fun decodesGroup2CellMinMax() {
+        val p = ByteArray(2 + 96 * 2)
+        p[0] = 0x61; p[1] = 0x02
+        for (i in 0 until 96) {
+            val mv = when (i) {
+                17 -> 3672
+                50 -> 3777
+                else -> 3749
+            }
+            p[2 + 2 * i] = (mv shr 8).toByte()
+            p[3 + 2 * i] = (mv and 0xFF).toByte()
+        }
+        val s = GroupDecoder.apply(LeafState(), p)
+        assertEquals(3.672, s.cellMinV!!, 0.0005)
+        assertEquals(3.777, s.cellMaxV!!, 0.0005)
+    }
+
+    @Test fun group2IgnoresImplausibleCells() {
+        val p = ByteArray(2 + 96 * 2)
+        p[0] = 0x61; p[1] = 0x02
+        for (i in 0 until 96) {
+            // cell 0 = 0x0000 (dead read), cell 1 = 0xFFFF (padding), rest 3700
+            val mv = when (i) {
+                0 -> 0
+                1 -> 0xFFFF
+                else -> 3700
+            }
+            p[2 + 2 * i] = (mv shr 8).toByte()
+            p[3 + 2 * i] = (mv and 0xFF).toByte()
+        }
+        val s = GroupDecoder.apply(LeafState(), p)
+        assertEquals(3.700, s.cellMinV!!, 0.0005)
+        assertEquals(3.700, s.cellMaxV!!, 0.0005)
+    }
+
     @Test fun consecutiveFramesWithoutFirstFrameRejected() {
         // CF-only garbage (missed first frame): no declared length -> no payload
         assertEquals(0, IsoTp.reassemble("7BB2101020304 7BB2205060708").size)

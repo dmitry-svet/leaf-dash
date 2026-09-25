@@ -17,9 +17,21 @@ object GroupDecoder {
         if (payload.size < 2 || (payload[0].toInt() and 0xFF) != 0x61) return state
         return when (payload[1].toInt() and 0xFF) {
             0x01 -> group1(state, payload)
+            0x02 -> group2(state, payload)
             0x04 -> group4(state, payload)
             else -> state
         }
+    }
+
+    /** Group 2 (2102): 96 cell voltages, 2 bytes each, big-endian mV. */
+    private fun group2(s: LeafState, p: ByteArray): LeafState {
+        if (p.size < 2 + 96 * 2) return s
+        fun u(i: Int) = p[i].toInt() and 0xFF
+        val mv = (0 until 96).mapNotNull { i ->
+            ((u(2 + 2 * i) shl 8) or u(3 + 2 * i)).takeIf { it in 1000..4500 }
+        }
+        if (mv.isEmpty()) return s
+        return s.copy(cellMinV = mv.min() / 1000.0, cellMaxV = mv.max() / 1000.0)
     }
 
     /** Group 1 (2101): capacity Ah, Hx, derived SOH, candidate pack voltage. */
