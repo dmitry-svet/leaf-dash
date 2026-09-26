@@ -171,18 +171,21 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             Tile("SOH", fmt(leaf.sohPercent, 0, "%"), Modifier.weight(1f))
             Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
             Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
-            // weakest cell V (tenths) over min-max spread (mV), no legend;
-            // red = weakest cell dictates power cut (turtle) / cells diverging
-            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.7f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("Bat temp", tempStr, Modifier.weight(1.4f))
             Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
             Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
-            Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f), big = true)
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), big = true)
+            Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
+            // weakest cell V (tenths) over min-max spread (mV), no legend;
+            // red = weakest cell dictates power cut (turtle) / cells diverging
+            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.6f).fillMaxHeight())
         }
     }
 }
@@ -325,7 +328,10 @@ private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifie
     val spreadMv = if (minV != null && maxV != null) (maxV - minV) * 1000.0 else null
     val danger = Color(0xFFC62828)
     Card(modifier) {
-        Column(Modifier.padding(10.dp)) {
+        Column(
+            Modifier.fillMaxHeight().padding(10.dp),
+            verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
             FitText(
                 fmt(minV, 1, "V"),
                 MaterialTheme.typography.titleLarge,
