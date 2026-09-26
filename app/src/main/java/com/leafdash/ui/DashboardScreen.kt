@@ -171,26 +171,14 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             Tile("SOH", fmt(leaf.sohPercent, 0, "%"), Modifier.weight(1f))
             Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
             Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+            // weakest cell V (tenths) over min-max spread (mV), no legend;
+            // red = weakest cell dictates power cut (turtle) / cells diverging
+            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.7f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("Bat temp", tempStr, Modifier.weight(1.4f))
             Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
             Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
-        }
-        // weakest cell dictates when the car cuts power (turtle) - warn early
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val minColor = leaf.cellMinV?.let {
-                when {
-                    it < 3.15 -> Color(0xFFC62828)   // red: turtle imminent
-                    it < 3.3 -> Color(0xFFB58900)    // amber: deep sag
-                    else -> null
-                }
-            }
-            Tile("Cell min", fmt(leaf.cellMinV, 3, " V"), Modifier.weight(1f), valueColor = minColor)
-            val spread = if (leaf.cellMinV != null && leaf.cellMaxV != null) {
-                "%.0f mV".format((leaf.cellMaxV - leaf.cellMinV) * 1000.0)
-            } else "--"
-            Tile("Cell spread", spread, Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f), big = true)
@@ -318,13 +306,7 @@ private fun FitText(
 }
 
 @Composable
-private fun Tile(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    big: Boolean = false,
-    valueColor: Color? = null,
-) {
+private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Card(modifier) {
         Column(Modifier.padding(10.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
@@ -332,11 +314,36 @@ private fun Tile(
                 value,
                 style = if (big) MaterialTheme.typography.headlineLarge
                 else MaterialTheme.typography.headlineSmall,
-                color = valueColor,
             )
         }
     }
 }
+
+/** Weakest cell voltage over cell spread, stacked, no legend. */
+@Composable
+private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifier) {
+    val spreadMv = if (minV != null && maxV != null) (maxV - minV) * 1000.0 else null
+    val danger = Color(0xFFC62828)
+    Card(modifier) {
+        Column(Modifier.padding(10.dp)) {
+            FitText(
+                fmt(minV, 1, "V"),
+                MaterialTheme.typography.titleLarge,
+                color = danger.takeIf { minV != null && minV < CELL_MIN_DANGER_V },
+            )
+            FitText(
+                spreadMv?.let { "%.0fmV".format(it) } ?: "--",
+                MaterialTheme.typography.titleLarge,
+                color = danger.takeIf { spreadMv != null && spreadMv > CELL_SPREAD_DANGER_MV },
+            )
+        }
+    }
+}
+
+// weakest cell near cutoff = turtle imminent; spread this wide = weak cells
+// already diving under load (turtle came at 340 mV, 105 mV seen at 18% SOC)
+private const val CELL_MIN_DANGER_V = 3.15
+private const val CELL_SPREAD_DANGER_MV = 200.0
 
 @Composable
 private fun TripCard(

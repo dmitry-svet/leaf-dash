@@ -21,8 +21,9 @@ one row per window, legend on top):
   that window's own measured efficiency (clamped 5–60 kWh/100), applied to
   the remaining energy minus the "Unusable capacity" setting (default 2 kWh:
   weak cells cut power well above 0% SOC on degraded packs).
-- **Cell health tiles**: weakest cell voltage (amber < 3.3 V, red < 3.15 V —
-  turtle imminent) and min-max cell spread, from LBC group 2102.
+- **Cell health tile** (next to SOH/Hx/Odo): weakest cell voltage over
+  min-max cell spread, from LBC group 2102; red when min < 3.15 V (turtle
+  imminent) or spread > 200 mV.
   Stationary drain (heater/AC) counts as consumption; charging while parked
   does not go negative. Regen while moving counts.
 - **Distance**: smooth km = speed integral bounded to the coarse 0x5C5
