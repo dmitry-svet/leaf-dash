@@ -182,7 +182,7 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), big = true)
-            Tile("Battery", fmt(leaf.kwhRemaining, 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
+            Tile("Usable", fmt(usableKwh(state), 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
             // weakest cell V (tenths) over min-max spread (mV), no legend;
             // red = weakest cell dictates power cut (turtle) / cells diverging
             CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.6f).fillMaxHeight())
@@ -203,10 +203,7 @@ private fun EnergyEconomy(
     // average, else the smoothed EMA
     val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
         ?: state.avgKwhPer100
-    // usable energy for range: weak cells make the pack bottom unusable
-    val kwhRemaining = state.leaf.kwhRemaining?.let {
-        (it - state.reserveKwh).coerceAtLeast(0.0)
-    }
+    val kwhRemaining = usableKwh(state)
     if (compact) {
         // landscape: one table card, window name in the first column, metric
         // legend once on top — all 4 windows fit the screen
@@ -401,6 +398,11 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 // stable reference. No range prediction until the window has its first km
 // (fresh windows have nothing real to predict from); efficiency floored/capped
 // like the EMA so a downhill/regen start can't show absurd range.
+// weak cells make the pack bottom unusable: remaining energy minus the
+// user's reserve setting, for the tile and range predictions
+private fun usableKwh(state: DashState): Double? =
+    state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
+
 private fun tripEffRange(w: TripWindow, kwhRemaining: Double?, refEff: Double): Pair<Double, Double?> {
     val eff = w.kwhPer100?.takeIf { w.km >= 1.0 && it > 0 } ?: refEff
     val range = if (w.km < 1.0) null

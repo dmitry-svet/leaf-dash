@@ -96,7 +96,7 @@ fun SettingsScreen(
         )
         Text(
             "Bottom-of-pack energy the car can't use (weak cells cut power " +
-                "early). Subtracted from range predictions.",
+                "early). Subtracted from the Usable tile and range predictions.",
             style = MaterialTheme.typography.bodySmall,
         )
 

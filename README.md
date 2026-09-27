@@ -20,7 +20,8 @@ one row per window, legend on top):
   Range prediction is hidden (`--`) until a window has its first km, then uses
   that window's own measured efficiency (clamped 5–60 kWh/100), applied to
   the remaining energy minus the "Unusable capacity" setting (default 2 kWh:
-  weak cells cut power well above 0% SOC on degraded packs).
+  weak cells cut power well above 0% SOC on degraded packs). The "Usable"
+  tile shows that same reduced energy.
 - **Cell health tile** (next to SOC/Battery, same height): weakest cell voltage over
   min-max cell spread, from LBC group 2102; red when min < 3.15 V (turtle
   imminent) or spread > 200 mV.
