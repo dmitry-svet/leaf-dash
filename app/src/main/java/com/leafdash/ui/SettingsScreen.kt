@@ -44,6 +44,7 @@ fun SettingsScreen(
     onSetStream: (Boolean) -> Unit,
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
+    onOpenTripLog: () -> Unit,
     onBack: () -> Unit,
 ) {
     Column(
@@ -53,6 +54,10 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onBack) { Text("‹ Back") }
             Text("Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
+            Text("Trip log")
         }
 
         Row(

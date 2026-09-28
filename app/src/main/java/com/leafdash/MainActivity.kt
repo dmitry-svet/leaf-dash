@@ -8,7 +8,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.activity.viewModels
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
         var showPicker by remember { mutableStateOf(false) }
         var showSettings by remember { mutableStateOf(false) }
+        var showTripLog by remember { mutableStateOf(false) }
 
         // keep the screen awake while a session is connected (driving dashboard)
         val activity = context as? android.app.Activity
@@ -105,6 +108,31 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        val exportLauncher = rememberLauncherForActivityResult(CreateDocument("text/csv")) { uri ->
+            if (uri != null) {
+                val csv = vm.tripsCsv()
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
+                }.onFailure {
+                    android.widget.Toast.makeText(context, "Export failed: ${it.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        if (showTripLog) {
+            val trips by vm.trips.collectAsState()
+            BackHandler { showTripLog = false }
+            com.leafdash.ui.TripLogScreen(
+                trips = trips,
+                onExport = {
+                    val day = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+                    exportLauncher.launch("leafdash-trips-$day.csv")
+                },
+                onBack = { showTripLog = false },
+            )
+            return
+        }
+
         if (showSettings) {
             val logOn by vm.logEnabled.collectAsState()
             val logUrl by vm.logUrl.collectAsState()
@@ -122,6 +150,7 @@ class MainActivity : ComponentActivity() {
                 onSetStream = { vm.setStream(it) },
                 reserveKwh = reserve,
                 onSetReserve = { vm.setReserve(it) },
+                onOpenTripLog = { showTripLog = true },
                 onBack = { showSettings = false },
             )
             return

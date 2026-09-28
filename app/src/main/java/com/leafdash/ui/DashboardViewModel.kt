@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.leafdash.poll.DashState
 import com.leafdash.poll.LeafPoller
 import com.leafdash.transport.Transport
+import com.leafdash.trip.TripLogStore
+import com.leafdash.trip.TripLogger
+import com.leafdash.trip.TripRecord
+import com.leafdash.trip.TripSample
 import com.leafdash.trip.TripStore
 import com.leafdash.trip.TripTracker
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +61,26 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     private val streamer = com.leafdash.log.LogStreamer()
 
+    // trip log: one record per car-on-to-car-off drive
+    private val tripLogStore = TripLogStore(app.filesDir)
+    private val tripLogIo = Dispatchers.IO.limitedParallelism(1)   // ordered file writes
+    private var tripLogger: TripLogger? = null                     // null until loaded
+    private var tripSamples = 0
+
+    private val _trips = MutableStateFlow<List<TripRecord>>(emptyList())
+    /** Finished trips (oldest first) plus the in-progress one, if it has distance. */
+    val trips: StateFlow<List<TripRecord>> = _trips.asStateFlow()
+    private var finishedTrips: List<TripRecord> = emptyList()
+
     init {
+        viewModelScope.launch {
+            val (done, cur) = withContext(tripLogIo) {
+                tripLogStore.loadFinished() to tripLogStore.loadCurrent()
+            }
+            finishedTrips = done
+            tripLogger = TripLogger(cur)
+            publishTrips()
+        }
         viewModelScope.launch {
             unitsMiles = tripStore.loadUnitsMiles()
             _state.value = _state.value.copy(odoMiles = unitsMiles)
@@ -148,6 +171,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
                         t.onSample(ps.leaf.kwhRemaining, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
+                        logTripSample(ps, km)
                     }
                     // keep last known values through connecting/reconnect (empty leaf)
                     val leaf = if (ps.leaf == com.leafdash.can.LeafState()) lastLeaf else ps.leaf
@@ -176,9 +200,51 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         // keep last data on screen, but reflect disconnected status
         _state.value = _state.value.copy(connected = false, connecting = false)
         tracker?.let { t -> viewModelScope.launch { tripStore.save(t.snapshot()) } }
+        saveCurrentTrip()
     }
 
     fun resetTrip() = tracker?.resetTrip()
+
+    private fun logTripSample(ps: DashState, distKm: Double) {
+        val logger = tripLogger ?: return
+        val leaf = ps.leaf
+        val kwh = leaf.kwhRemaining ?: return
+        val finished = logger.onSample(
+            TripSample(
+                tMs = System.currentTimeMillis(),
+                odoKm = ps.odoKm,
+                distKm = distKm,
+                kwh = kwh,
+                soc = leaf.socPercent,
+                packV = leaf.packVolts,
+                cellMinV = leaf.cellMinV,
+                cellMaxV = leaf.cellMaxV,
+                ah = leaf.ahCapacity,
+                soh = leaf.sohPercent,
+                hx = leaf.hx,
+                batTempC = leaf.batteryTempsC.takeIf { it.isNotEmpty() }?.average(),
+                extTempC = leaf.ambientTempC,
+            ),
+        )
+        if (finished != null) {
+            finishedTrips = finishedTrips + finished
+            viewModelScope.launch(tripLogIo) { tripLogStore.append(finished) }
+        }
+        if (finished != null || ++tripSamples % 10 == 0) saveCurrentTrip()
+    }
+
+    private fun saveCurrentTrip() {
+        val cur = tripLogger?.current ?: return
+        viewModelScope.launch(tripLogIo) { tripLogStore.saveCurrent(cur) }
+        publishTrips()
+    }
+
+    private fun publishTrips() {
+        _trips.value = finishedTrips + listOfNotNull(tripLogger?.finish())
+    }
+
+    /** Trip log as CSV (same columns as the table). */
+    fun tripsCsv(): String = TripLogStore.toCsv(_trips.value)
 
     // diagnostic CSV log in the app's external files dir; capped so it can't grow
     // without bound. Path: Android/data/com.leafdash/files/leafdash-dist.csv

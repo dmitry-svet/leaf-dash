@@ -33,6 +33,14 @@ one row per window, legend on top):
 - **Robust sessions**: auto-reconnect every 10 s; a watchdog kills a hung
   link (frozen dongle, car turned off) after 30 s so reconnect can take over.
 - **Demo mode**: runs the whole app with synthetic data — no car needed.
+- **Trip log** (Settings -> Trip log): one row per drive, car on to car off
+  (30 min without data ends a trip; BT dropouts stay inside it). Columns:
+  date/time, start odo, duration, distance, energy Wh (net battery drain,
+  idle included), Wh/km, start/end SOC and kWh, Ah, SOH, Hx, start/end pack
+  V, lowest cell V and widest cell spread during the drive, temps. Stored in
+  the app's files dir (`trips.csv` + in-progress `trip_current.csv`, which
+  survives an app restart); "Export CSV" saves it anywhere via the system
+  file picker.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
