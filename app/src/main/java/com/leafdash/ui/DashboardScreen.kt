@@ -181,11 +181,11 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             Modifier.fillMaxWidth().height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), big = true)
+            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(0.8f).fillMaxHeight(), big = true)
             Tile("Usable", fmt(usableKwh(state), 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
             // weakest cell V (tenths) over min-max spread (mV), no legend;
             // red = weakest cell dictates power cut (turtle) / cells diverging
-            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.6f).fillMaxHeight())
+            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.8f).fillMaxHeight())
         }
     }
 }
@@ -223,7 +223,7 @@ private fun EnergyEconomy(
                         )
                     }
                 }
-                TripRow("Lifetime", state.lifetime, kwhRemaining, refEff)
+                TripRow("Lifetime", state.lifetime, kwhRemaining, refEff, kmDigits = 0)
                 TripRow("Since last charge", state.lastCharge, kwhRemaining, refEff)
                 TripRow("Since car on", state.carOn, kwhRemaining, refEff)
                 TripRow("Trip", state.trip, kwhRemaining, refEff, onReset = onResetTrip)
@@ -236,7 +236,7 @@ private fun EnergyEconomy(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            TripCard("Lifetime", state.lifetime, kwhRemaining, refEff)
+            TripCard("Lifetime", state.lifetime, kwhRemaining, refEff, kmDigits = 0)
             TripCard("Since last charge", state.lastCharge, kwhRemaining, refEff)
             TripCard("Since car on", state.carOn, kwhRemaining, refEff)
             TripCard("Trip", state.trip, kwhRemaining, refEff, onReset = onResetTrip)
@@ -252,6 +252,7 @@ private fun TripRow(
     kwhRemaining: Double?,
     refEff: Double,
     onReset: (() -> Unit)? = null,
+    kmDigits: Int = 1,
 ) {
     val (eff, range) = tripEffRange(w, kwhRemaining, refEff)
     Row(
@@ -276,7 +277,7 @@ private fun TripRow(
                 )
             }
         }
-        FitText(fmt(w.km, 1), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
+        FitText(fmt(w.km, kmDigits), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
         FitText(fmt(w.kwh, 2), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
         FitText(if (w.km >= 1.0) fmt(eff, 1) else "--", MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
         FitText(fmt(range, 0), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
@@ -355,6 +356,7 @@ private fun TripCard(
     kwhRemaining: Double?,
     refEff: Double,
     onReset: (() -> Unit)? = null,
+    kmDigits: Int = 1,
 ) {
     val (eff, range) = tripEffRange(w, kwhRemaining, refEff)
     Card(Modifier.fillMaxWidth()) {
@@ -376,7 +378,7 @@ private fun TripCard(
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Metric("km", fmt(w.km, 1), Modifier.weight(1f))
+                Metric("km", fmt(w.km, kmDigits), Modifier.weight(1f))
                 Metric("kWh", fmt(w.kwh, 2), Modifier.weight(1f))
                 Metric("kWh/100", if (w.km >= 1.0) fmt(eff, 1) else "--", Modifier.weight(1f))
                 Metric("range km", fmt(range, 0), Modifier.weight(1f))
