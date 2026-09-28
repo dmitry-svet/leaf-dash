@@ -37,7 +37,10 @@ one row per window, legend on top):
   (30 min without data ends a trip; BT dropouts stay inside it). Columns:
   date/time, start odo, duration, distance, energy Wh (net battery drain,
   idle included), Wh/km, start/end SOC and kWh, Ah, SOH, Hx, start/end pack
-  V, lowest cell V and widest cell spread during the drive, temps. Stored in
+  V, lowest cell V and widest cell spread during the drive, temps. Distance
+  and energy are summed per sample within each BT session (like the economy
+  windows): a reconnect re-anchors distance on the integer-mile odometer, and
+  driving while the link was down is excluded from both. Stored in
   the app's files dir (`trips.csv` + in-progress `trip_current.csv`, which
   survives an app restart); "Export CSV" saves it anywhere via the system
   file picker.

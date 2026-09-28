@@ -66,6 +66,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val tripLogIo = Dispatchers.IO.limitedParallelism(1)   // ordered file writes
     private var tripLogger: TripLogger? = null                     // null until loaded
     private var tripSamples = 0
+    private var sessionNo = 0                                      // poller sessions
 
     private val _trips = MutableStateFlow<List<TripRecord>>(emptyList())
     /** Finished trips (oldest first) plus the in-progress one, if it has distance. */
@@ -160,6 +161,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 TripTracker(tripStore.load()).also { it.onSessionStart() }
             }
             tracker = t
+            val session = ++sessionNo
             val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
             poller = p
@@ -171,7 +173,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
                         t.onSample(ps.leaf.kwhRemaining, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
-                        logTripSample(ps, km)
+                        logTripSample(ps, km, session)
                     }
                     // keep last known values through connecting/reconnect (empty leaf)
                     val leaf = if (ps.leaf == com.leafdash.can.LeafState()) lastLeaf else ps.leaf
@@ -205,13 +207,14 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetTrip() = tracker?.resetTrip()
 
-    private fun logTripSample(ps: DashState, distKm: Double) {
+    private fun logTripSample(ps: DashState, distKm: Double, session: Int) {
         val logger = tripLogger ?: return
         val leaf = ps.leaf
         val kwh = leaf.kwhRemaining ?: return
         val finished = logger.onSample(
             TripSample(
                 tMs = System.currentTimeMillis(),
+                session = session,
                 odoKm = ps.odoKm,
                 distKm = distKm,
                 kwh = kwh,
