@@ -1,5 +1,8 @@
 package com.leafdash.ui
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,9 +17,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +56,7 @@ fun TripLogScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
+            RotateButton()
             Button(onClick = onExport, enabled = trips.isNotEmpty()) { Text("Export CSV") }
         }
         if (trips.isEmpty()) {
@@ -81,6 +89,32 @@ fun TripLogScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Flips the screen between portrait and landscape (wide table) while the trip
+ * log is open; leaving the screen hands orientation back to the sensor.
+ */
+@Composable
+private fun RotateButton() {
+    val activity = LocalContext.current as? Activity ?: return
+    val landscape =
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    DisposableEffect(activity) {
+        onDispose {
+            // a rotation recreates the activity too - keep the forced orientation then
+            if (!activity.isChangingConfigurations) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+        }
+    }
+    OutlinedButton(onClick = {
+        activity.requestedOrientation =
+            if (landscape) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    }) {
+        Text("↻", style = MaterialTheme.typography.titleLarge)   // rotate
     }
 }
 

@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,8 +57,9 @@ class MainActivity : ComponentActivity() {
         val state by vm.state.collectAsState()
         val context = LocalContext.current
         var showPicker by remember { mutableStateOf(false) }
-        var showSettings by remember { mutableStateOf(false) }
-        var showTripLog by remember { mutableStateOf(false) }
+        // saveable: survive the activity recreation of a screen rotation
+        var showSettings by rememberSaveable { mutableStateOf(false) }
+        var showTripLog by rememberSaveable { mutableStateOf(false) }
 
         // keep the screen awake while a session is connected (driving dashboard)
         val activity = context as? android.app.Activity
