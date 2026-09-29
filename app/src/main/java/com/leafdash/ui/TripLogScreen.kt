@@ -3,6 +3,7 @@ package com.leafdash.ui
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.leafdash.trip.TripRecord
@@ -67,25 +73,27 @@ fun TripLogScreen(
             )
             return@Column
         }
-        // one horizontal scroll state shared by header and rows keeps columns aligned
+        // frozen header row (outside the list) and frozen date column (outside
+        // the horizontal scroll); one scroll state shared by header and rows
+        // keeps the other columns aligned
         val hScroll = rememberScrollState()
+        TableRow(
+            "Date",
+            TripRecord.HEADER.subList(2, SHOWN),
+            hScroll,
+            MaterialTheme.colorScheme.secondaryContainer,
+            bold = true,
+        )
+        val newestFirst = trips.asReversed()
         LazyColumn(Modifier.fillMaxSize()) {
-            item {
-                TableRow(
-                    TripRecord.HEADER.take(SHOWN),
-                    Modifier.horizontalScroll(hScroll)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    bold = true,
-                )
-            }
-            val newestFirst = trips.asReversed()
             items(newestFirst.size) { i ->
+                val r = newestFirst[i]
                 TableRow(
-                    newestFirst[i].cells().take(SHOWN),
-                    Modifier.horizontalScroll(hScroll).background(
-                        if (i % 2 == 1) MaterialTheme.colorScheme.surfaceVariant
-                        else MaterialTheme.colorScheme.surface,
-                    ),
+                    SimpleDateFormat("dd.MM.yy HH:mm", Locale.US).format(Date(r.startMs)),
+                    r.cells().subList(2, SHOWN),
+                    hScroll,
+                    if (i % 2 == 1) MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.surface,
                 )
             }
         }
@@ -118,17 +126,33 @@ private fun RotateButton() {
     }
 }
 
+/** Fixed [date] cell, then the [cells] that scroll sideways with [hScroll]. */
 @Composable
-private fun TableRow(cells: List<String>, modifier: Modifier, bold: Boolean = false) {
-    Row(modifier.padding(vertical = 8.dp)) {
-        cells.forEachIndexed { i, c ->
-            Text(
-                c,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (bold) FontWeight.Bold else null,
-                maxLines = if (bold) 2 else 1,
-                modifier = Modifier.width(if (i == 0) 96.dp else 84.dp).padding(horizontal = 4.dp),
-            )
+private fun TableRow(
+    date: String,
+    cells: List<String>,
+    hScroll: ScrollState,
+    background: Color,
+    bold: Boolean = false,
+) {
+    Row(
+        Modifier.fillMaxWidth().background(background).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Cell(date, 112.dp, bold)
+        Row(Modifier.horizontalScroll(hScroll)) {
+            cells.forEach { Cell(it, 84.dp, bold) }
         }
     }
+}
+
+@Composable
+private fun Cell(text: String, width: Dp, bold: Boolean) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = if (bold) FontWeight.Bold else null,
+        maxLines = if (bold) 2 else 1,
+        modifier = Modifier.width(width).padding(horizontal = 4.dp),
+    )
 }

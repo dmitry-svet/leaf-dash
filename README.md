@@ -44,7 +44,9 @@ one row per window, legend on top):
   the app's files dir (`trips.csv` + in-progress `trip_current.csv`, which
   survives an app restart); "Export CSV" saves it anywhere via the system
   file picker; the ↻ button flips the screen between portrait and landscape
-  while the log is open (sensor orientation restored on leaving).
+  while the log is open (sensor orientation restored on leaving). The table
+  keeps its header row and date/time column frozen while scrolling (the CSV
+  keeps separate Date and Time columns).
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
