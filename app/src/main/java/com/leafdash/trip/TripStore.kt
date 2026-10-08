@@ -58,6 +58,13 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[RESERVE_KWH] = kwh }
     }
 
+    suspend fun loadDataLogEnabled(): Boolean =
+        context.tripDataStore.data.first()[DATA_LOG_ENABLED] ?: true
+
+    suspend fun saveDataLogEnabled(on: Boolean) {
+        context.tripDataStore.edit { it[DATA_LOG_ENABLED] = on }
+    }
+
     suspend fun loadStreamEnabled(): Boolean =
         context.tripDataStore.data.first()[STREAM_ENABLED] ?: false
 
@@ -99,6 +106,7 @@ class TripStore(private val context: Context) {
         val LOG_URL = stringPreferencesKey("log_url")
         val STREAM_ENABLED = booleanPreferencesKey("stream_enabled")
         val RESERVE_KWH = doublePreferencesKey("reserve_kwh")
+        val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2

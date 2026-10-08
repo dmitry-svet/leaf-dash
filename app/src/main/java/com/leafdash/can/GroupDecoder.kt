@@ -27,11 +27,10 @@ object GroupDecoder {
     private fun group2(s: LeafState, p: ByteArray): LeafState {
         if (p.size < 2 + 96 * 2) return s
         fun u(i: Int) = p[i].toInt() and 0xFF
-        val mv = (0 until 96).mapNotNull { i ->
-            ((u(2 + 2 * i) shl 8) or u(3 + 2 * i)).takeIf { it in 1000..4500 }
-        }
+        val all = (0 until 96).map { i -> (u(2 + 2 * i) shl 8) or u(3 + 2 * i) }
+        val mv = all.filter { it in 1000..4500 }
         if (mv.isEmpty()) return s
-        return s.copy(cellMinV = mv.min() / 1000.0, cellMaxV = mv.max() / 1000.0)
+        return s.copy(cellMinV = mv.min() / 1000.0, cellMaxV = mv.max() / 1000.0, cellsMv = all)
     }
 
     /** Group 1 (2101): capacity Ah, Hx, derived SOH, candidate pack voltage. */

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -45,10 +47,14 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
+    dataLogEnabled: Boolean,
+    onSetDataLog: (Boolean) -> Unit,
+    dataLogPath: String,
+    onExportDataLog: () -> Unit,
     onBack: () -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -73,6 +79,22 @@ fun SettingsScreen(
                 "odometer reads lower than the dash.",
             style = MaterialTheme.typography.bodySmall,
         )
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Data log (LeafSpy format)", style = MaterialTheme.typography.titleMedium)
+            Switch(checked = dataLogEnabled, onCheckedChange = onSetDataLog)
+        }
+        Text(
+            "One row per sample in LeafSpy's CSV layout, a file per day: $dataLogPath",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(onClick = onExportDataLog, modifier = Modifier.fillMaxWidth()) {
+            Text("Export data log CSV")
+        }
 
         Row(
             Modifier.fillMaxWidth(),

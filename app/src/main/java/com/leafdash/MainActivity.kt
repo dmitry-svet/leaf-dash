@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.launch
 import com.leafdash.transport.BtSppTransport
 import com.leafdash.transport.DemoTransport
 import com.leafdash.ui.DashboardScreen
@@ -121,6 +122,20 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        val dataLogExport = rememberLauncherForActivityResult(CreateDocument("text/csv")) { uri ->
+            if (uri != null) scope.launch {
+                val err = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { vm.exportDataLog(it) }
+                    }.exceptionOrNull()
+                }
+                if (err != null) {
+                    android.widget.Toast.makeText(context, "Export failed: ${err.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
         if (showTripLog) {
             val trips by vm.trips.collectAsState()
             BackHandler { showTripLog = false }
@@ -140,6 +155,7 @@ class MainActivity : ComponentActivity() {
             val logUrl by vm.logUrl.collectAsState()
             val streamOn by vm.streamEnabled.collectAsState()
             val reserve by vm.reserveKwh.collectAsState()
+            val dataLogOn by vm.dataLogEnabled.collectAsState()
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
@@ -153,6 +169,13 @@ class MainActivity : ComponentActivity() {
                 reserveKwh = reserve,
                 onSetReserve = { vm.setReserve(it) },
                 onOpenTripLog = { showTripLog = true },
+                dataLogEnabled = dataLogOn,
+                onSetDataLog = { vm.setDataLog(it) },
+                dataLogPath = vm.dataLogPath,
+                onExportDataLog = {
+                    val day = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+                    dataLogExport.launch("leafdash-datalog-$day.csv")
+                },
                 onBack = { showSettings = false },
             )
             return

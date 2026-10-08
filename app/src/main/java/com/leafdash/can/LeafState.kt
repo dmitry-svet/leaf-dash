@@ -21,6 +21,8 @@ data class LeafState(
     /** Weakest / strongest cell voltage (V), from LBC group 2 (96 cells). */
     val cellMinV: Double? = null,
     val cellMaxV: Double? = null,
+    /** All 96 cell pair voltages (mV), cell 1 first; empty until group 2 read. */
+    val cellsMv: List<Int> = emptyList(),
 ) {
     /** Instant DC power at the pack, kW. + discharge, - charge/regen. */
     val powerKw: Double?

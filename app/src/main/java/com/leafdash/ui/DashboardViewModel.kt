@@ -68,6 +68,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private var tripSamples = 0
     private var sessionNo = 0                                      // poller sessions
 
+    // LeafSpy-format per-sample data log (Android/data/<app>/files/LOG_FILES)
+    private val dataLogStore =
+        com.leafdash.log.DataLogStore(app.getExternalFilesDir(null) ?: app.filesDir)
+    private val _dataLogEnabled = MutableStateFlow(true)
+    val dataLogEnabled: StateFlow<Boolean> = _dataLogEnabled.asStateFlow()
+    val dataLogPath: String get() = dataLogStore.path
+
     private val _trips = MutableStateFlow<List<TripRecord>>(emptyList())
     /** Finished trips (oldest first) plus the in-progress one, if it has distance. */
     val trips: StateFlow<List<TripRecord>> = _trips.asStateFlow()
@@ -90,6 +97,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _logUrl.value = tripStore.loadLogUrl()
             _streamEnabled.value = tripStore.loadStreamEnabled()
             _reserveKwh.value = tripStore.loadReserveKwh()
+            _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
             streamer.url = _logUrl.value
         }
@@ -234,7 +242,28 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch(tripLogIo) { tripLogStore.append(finished) }
         }
         if (finished != null || ++tripSamples % 10 == 0) saveCurrentTrip()
+        logDataRow(ps)
     }
+
+    private fun logDataRow(ps: DashState) {
+        if (!_dataLogEnabled.value) return
+        val now = System.currentTimeMillis()
+        val day = tripLogger?.current?.startMs ?: now          // drive's start day
+        val bm = getApplication<Application>().getSystemService(android.os.BatteryManager::class.java)
+        val phoneBattery = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            ?.takeIf { it in 0..100 }
+        val row = com.leafdash.log.LeafSpyLog.row(now, ps.leaf, ps.odoKm, phoneBattery)
+        viewModelScope.launch(tripLogIo) { runCatching { dataLogStore.append(day, row) } }
+    }
+
+    /** Enable/disable the LeafSpy-format data log; persisted. */
+    fun setDataLog(on: Boolean) {
+        _dataLogEnabled.value = on
+        viewModelScope.launch { tripStore.saveDataLogEnabled(on) }
+    }
+
+    /** Writes all data log days, merged, to [out] (blocking: call off main). */
+    fun exportDataLog(out: java.io.OutputStream) = dataLogStore.exportAll(out)
 
     private fun saveCurrentTrip() {
         val cur = tripLogger?.current ?: return
