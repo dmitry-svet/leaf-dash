@@ -22,7 +22,7 @@ class GroupDecoderTest {
     @Test fun decodesGroup1CapacityHxSohVolts() {
         val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(group1))
         assertEquals(44.30, s.ahCapacity!!, 0.01)
-        assertEquals(51.38, s.hx!!, 0.01)
+        assertEquals(50.18, s.hx!!, 0.01)        // raw 5138 / 102.4 (LeafSpy scale)
         assertEquals(67.1, s.sohPercent!!, 0.1)   // 44.30 / 66 * 100
         assertEquals(365.0, s.packVolts!!, 0.1)
         assertEquals(28.31, s.socPercent!!, 0.01) // idx31-33 / 10000

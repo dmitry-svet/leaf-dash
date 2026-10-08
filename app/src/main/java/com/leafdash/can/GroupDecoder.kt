@@ -38,7 +38,9 @@ object GroupDecoder {
     private fun group1(s: LeafState, p: ByteArray): LeafState {
         if (p.size < 38) return s
         fun u(i: Int) = p[i].toInt() and 0xFF
-        val hx = ((u(28) shl 8) or u(29)) / 100.0
+        // /102.4, not /100: matches LeafSpy side by side (raw 4910 -> 47.95 vs
+        // LeafSpy 47.93, raw 5050 -> 49.32 vs 49.27)
+        val hx = ((u(28) shl 8) or u(29)) / 102.4
         val soc = ((u(31) shl 16) or (u(32) shl 8) or u(33)) / 10000.0
         val ah = ((u(35) shl 16) or (u(36) shl 8) or u(37)) / 10000.0
         val soh = if (ah > 0) ah / NEW_CAR_AH * 100.0 else null
