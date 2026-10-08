@@ -293,7 +293,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         runCatching {
             if (f.length() > 2_000_000L) f.writeText("")   // rotate at ~2MB
             if (f.length() == 0L) {
-                f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC,cellMin,cellMax\n")
+                f.appendText("t_ms,odoRaw,odoKm,speed,b6,sessDist,dist,soc,gids,ah,packV,packA,kwh,batC,cellMin,cellMax,raw2106,raw5b3\n")
             }
             f.appendText(line + "\n")
         }

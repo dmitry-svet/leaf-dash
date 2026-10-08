@@ -13,6 +13,15 @@ package com.leafdash.can
  */
 object CanDecoder {
 
+    /** 0x385 tire pressures, PSI = byte / 4, bytes 2..5 = FL, FR, RR, RL; 0 = no data (OVMS). */
+    fun tires(f: CanFrame): List<Double?> = (2..5).map { i -> f.u(i).takeIf { it > 0 }?.let { it / 4.0 } }
+
+    /**
+     * 0x5B3 (VCM, car-CAN) gids = ((d4 & 3) << 8) | d5, per the AZE0 car-CAN DBC.
+     * OVMS reports not seeing this frame on AZE0 - to be confirmed on the car.
+     */
+    fun gids5b3(f: CanFrame): Int? = (((f.u(4) and 0x03) shl 8) or f.u(5)).takeIf { it in 1..1022 }
+
     // Frame ids we care about (MVP, passive broadcast).
     const val ID_PACK = 0x1DB   // pack volts + current
     const val ID_SOC = 0x55B    // state of charge

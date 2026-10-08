@@ -80,6 +80,78 @@ class Elm327(private val transport: Transport) {
         return out
     }
 
+    /**
+     * Like [readBroadcast] but gives up after [timeoutMs] when the frame never
+     * comes (not every car sends every id). Any input halts ATMA, so a timer
+     * sends a CR to break the blocked read; the ELM then prints "STOPPED"
+     * and/or the prompt. Exactly one CR is sent (timer or normal stop, whichever
+     * wins), and never at the prompt: a bare CR there repeats the last command.
+     */
+    fun readBroadcastTimed(rxId: String, timeoutMs: Long): CanFrame? {
+        sendCommand("ATCAF0")
+        drainToPrompt()
+        setRxAddr(rxId)
+        startMonitor()
+        val stopped = java.util.concurrent.atomic.AtomicBoolean(false)
+        val timer = Thread {
+            try {
+                Thread.sleep(timeoutMs)
+                if (stopped.compareAndSet(false, true)) {
+                    runCatching { transport.write("\r".toByteArray(Charsets.US_ASCII)) }
+                }
+            } catch (_: InterruptedException) {
+            }
+        }.apply { isDaemon = true; start() }
+        var frame: CanFrame? = null
+        var atPrompt = false
+        while (true) {
+            val raw = readLineOrPrompt() ?: break
+            if (raw == PROMPT) { atPrompt = true; break }
+            if (raw.contains("STOPPED")) break
+            frame = parseMonitorLine(raw) ?: continue
+            break
+        }
+        timer.interrupt()
+        val won = stopped.compareAndSet(false, true)
+        when {
+            // monitor already ended by itself: send nothing, unless the timer's CR
+            // landed at the prompt and restarted ATMA - then stop that one
+            atPrompt -> if (!won) {
+                transport.write("\r".toByteArray(Charsets.US_ASCII))
+                drainToPrompt()
+            }
+            else -> {
+                if (won) transport.write("\r".toByteArray(Charsets.US_ASCII))
+                drainToPrompt()
+            }
+        }
+        sendCommand("ATCAF1")
+        drainToPrompt()
+        return frame
+    }
+
+    /** One line, or [PROMPT] when the '>' prompt arrives on an empty line; null at end. */
+    private fun readLineOrPrompt(): String? {
+        line.setLength(0)
+        while (true) {
+            val b = nextByte()
+            if (b < 0) return if (line.isEmpty()) null else line.toString()
+            val c = b.toChar()
+            when {
+                c == '>' -> return if (line.isEmpty()) PROMPT else line.toString().also { bufPos-- }
+                c == '\r' || c == '\n' -> if (line.isNotEmpty()) return line.toString()
+                else -> line.append(c)
+            }
+        }
+    }
+
+    /** Point requests at ECU [tx] and accept replies only from [rx], e.g. "797"/"79A". */
+    fun useEcu(tx: String, rx: String) {
+        for (cmd in listOf("ATSH$tx", "ATFCSH$tx", "ATCRA$rx")) {
+            sendCommand(cmd)
+            drainToPrompt()
+        }
+    }
 
     /**
      * Active-diagnostic setup: the Leaf battery data is NOT broadcast on the
@@ -201,6 +273,8 @@ class Elm327(private val transport: Transport) {
     }
 
     companion object {
+        private const val PROMPT = ">"
+
         /**
          * Parse one monitor line into a [CanFrame], or null if it isn't a
          * frame. With ATS0 the line is contiguous hex: 3 hex chars of 11-bit

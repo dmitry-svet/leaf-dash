@@ -62,6 +62,37 @@ class LeafSpyLogTest {
         assertEquals("20.6", col("Pack T4 C"))
     }
 
+    @Test fun vcmAndBroadcastFields() {
+        val l = leaf.copy(
+            gids = 185, packAmps = -10.0, aux12A = -7.72, vin = "1N4AZ0CP2DC401434",
+            qcCount = 186, l1l2Count = 4725, tiresPsi = listOf(39.25, 39.0, 38.75, null),
+            motorPowerW = 37800, auxPower100W = 2, acPower250W = 3,
+            estAcPower50W = 17, estHeaterPower250W = 8,
+            plugState = 2, chargeMode = 2, chargePowerW = 3300, gear = 4,
+        )
+        val r = LeafSpyLog.row(1_791_000_000_000, l, 180328.4, 67)
+        fun c(name: String) = r[LeafSpyLog.HEADER.indexOf(name)]
+        assertEquals(LeafSpyLog.HEADER.size, r.size)
+        assertEquals("185", c("Gids"))
+        assertEquals("-10.00", c("Pack Amps"))
+        assertEquals("-7.72A", c("12v Bat Amps"))
+        assertEquals("1N4AZ0CP2DC401434", c("VIN"))
+        assertEquals("186", c("QC"))
+        assertEquals("4725", c("L1/L2"))
+        assertEquals("39.25", c("TP-FL"))
+        assertEquals("38.75", c("TP-RR"))
+        assertEquals("", c("TP-RL"))
+        assertEquals("37800", c("Motor Pwr(w)"))
+        assertEquals("2", c("Aux Pwr(100w)"))
+        assertEquals("3", c("A/C Pwr(250w)"))
+        assertEquals("17", c("Est Pwr A/C(50w)"))
+        assertEquals("8", c("Est Pwr Htr(250w)"))
+        assertEquals("2", c("Plug State"))
+        assertEquals("2", c("Charge Mode"))
+        assertEquals("3300", c("Chrg Pwr"))
+        assertEquals("4", c("Gear"))
+    }
+
     @Test fun otherFields() {
         assertEquals("47.93", col("Hx"))
         assertEquals("66.21", col("SOH"))

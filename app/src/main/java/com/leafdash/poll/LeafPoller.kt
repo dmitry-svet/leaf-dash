@@ -4,6 +4,7 @@ import com.leafdash.can.CanDecoder
 import com.leafdash.can.CanFrame
 import com.leafdash.can.GroupDecoder
 import com.leafdash.can.IsoTp
+import com.leafdash.can.VcmDecoder
 import com.leafdash.can.LeafState
 import com.leafdash.obd.Elm327
 import com.leafdash.transport.Transport
@@ -51,6 +52,9 @@ class LeafPoller(
     private var lastTickOdo = 0.0
     private var odoRejects = 0               // consecutive implausible odo readings
     private var lastUnitsMiles: Boolean? = null
+    private var cycle = 0                    // active poll cycles this session
+    private var gidsMisses = 0               // consecutive 0x5B3 timeouts
+    private val vcmFails = HashMap<Int, Int>() // consecutive failures per VCM DID
 
     @Volatile private var unitsMiles = false
     fun setUnitsMiles(m: Boolean) { unitsMiles = m }
@@ -65,6 +69,8 @@ class LeafPoller(
     private val odoBroadcastId = "5C5"
     private val ambientBroadcastId = "510"
     private val speedBroadcastId = "284"
+    private val tireBroadcastId = "385"
+    private val gidsBroadcastId = "5B3"
 
     private fun status(msg: String) {
         lastProgressMs = System.currentTimeMillis()
@@ -183,6 +189,26 @@ class LeafPoller(
                 }
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
+                // broadcasts that may not exist on every car: timed reads, every
+                // 5th cycle; gids 0x5B3 dropped for the session after 3 misses
+                if (cycle % 5 == 0) {
+                    elm.readBroadcastTimed(tireBroadcastId, BROADCAST_TIMEOUT_MS)?.let {
+                        leaf = leaf.copy(tiresPsi = CanDecoder.tires(it))
+                    }
+                    if (gidsMisses < 3) {
+                        val g = elm.readBroadcastTimed(gidsBroadcastId, BROADCAST_TIMEOUT_MS)
+                        captured["gids $gidsBroadcastId"] = g?.data?.joinToString("") { "%02X".format(it) } ?: "(none)"
+                        val gids = g?.let { CanDecoder.gids5b3(it) }
+                        if (gids == null) gidsMisses++ else { gidsMisses = 0; leaf = leaf.copy(gids = gids) }
+                    }
+                }
+                status.add("tires: ${leaf.tiresPsi.joinToString("/") { it?.let { p -> "%.1f".format(p) } ?: "-" }.ifEmpty { "no data" }}")
+                status.add("gids: ${leaf.gids ?: "no data"}")
+
+                pollVcm(captured)
+                status.add("VIN: ${leaf.vin ?: "no data"}")
+                status.add("gear: ${leaf.gear ?: "-"}  motor: ${leaf.motorPowerW ?: "-"} W  QC/L1L2: ${leaf.qcCount ?: "-"}/${leaf.l1l2Count ?: "-"}")
+
                 // diagnostic CSV: t,odoRaw,odoKm,spd,b6(counter),sessDist,dist
                 // + energy fields (soc,gids,ah,packV,packA,kwh,batC) for economy
                 // debugging; energy values use Double.toString (locale-safe)
@@ -193,17 +219,54 @@ class LeafPoller(
                         "${leaf.socPercent ?: ""},${leaf.gids ?: ""},${leaf.ahCapacity ?: ""}," +
                         "${leaf.packVolts ?: ""},${leaf.packAmps ?: ""},${leaf.kwhRemaining ?: ""}," +
                         "${leaf.batteryTempsC.firstOrNull() ?: ""}," +
-                        "${leaf.cellMinV ?: ""},${leaf.cellMaxV ?: ""}",
+                        "${leaf.cellMinV ?: ""},${leaf.cellMaxV ?: ""}," +
+                        // raw replies for decodes not yet verified on the car
+                        "${captured["2106"].orEmpty().replace(Regex("\\s+"), "|")}," +
+                        "${captured["gids $gidsBroadcastId"].orEmpty()}",
                 )
 
                 elm.setRxAddr(lbcRxAddr)   // restore filter for battery polling
             }
 
+            cycle++
             raw = captured
             debug = status
             publish(connected = true)
             Thread.sleep(500)
         }
+    }
+
+    /**
+     * VCM (0x797 -> 0x79A) UDS reads: live values every cycle, counters and
+     * charge state every 10th, VIN once. A DID that fails 3 times in a row is
+     * skipped for the rest of the session (unsupported DIDs cost a timeout
+     * each). Restores LBC addressing at the end.
+     */
+    private fun pollVcm(captured: MutableMap<String, String>) {
+        if (!running) return
+        elm.useEcu("797", "79A")
+        if (leaf.vin == null && (vcmFails[VIN_DID] ?: 0) < 3) {
+            val text = elm.queryRaw("2181")
+            captured["vin"] = text
+            val v = VcmDecoder.vin(IsoTp.reassemble(text))
+            if (v == null) vcmFails[VIN_DID] = (vcmFails[VIN_DID] ?: 0) + 1
+            else leaf = leaf.copy(vin = v)
+        }
+        val dids = if (cycle % 10 == 0) VcmDecoder.FAST + VcmDecoder.SLOW else VcmDecoder.FAST
+        for (did in dids) {
+            if (!running) break
+            if ((vcmFails[did] ?: 0) >= 3) continue
+            val text = elm.queryRaw("22%04X".format(did))
+            captured["vcm %04X".format(did)] = text
+            val p = IsoTp.reassemble(text)
+            if (p.isNotEmpty() && (p[0].toInt() and 0xFF) == 0x62) {
+                vcmFails[did] = 0
+                leaf = VcmDecoder.apply(leaf, did, p)
+            } else {
+                vcmFails[did] = (vcmFails[did] ?: 0) + 1
+            }
+        }
+        elm.useEcu("79B", lbcRxAddr)
     }
 
     /**
@@ -300,6 +363,8 @@ class LeafPoller(
         const val MAX_ODO_STEP = 10.0
         const val ODO_REJECT_LIMIT = 3  // this many in a row = counter really moved
         const val SEED_GAIN = 1.0       // trust raw speed integral (matched car trip in logs)
-        const val CALIB_MIN_KM = 16.0   // calibrate gain only past this raw distance
+        const val CALIB_MIN_KM = 16.0
+        const val BROADCAST_TIMEOUT_MS = 1500L
+        const val VIN_DID = -1          // vcmFails key for the VIN request   // calibrate gain only past this raw distance
     }
 }

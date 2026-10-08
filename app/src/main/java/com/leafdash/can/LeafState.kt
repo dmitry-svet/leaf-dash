@@ -23,6 +23,24 @@ data class LeafState(
     val cellMaxV: Double? = null,
     /** All 96 cell pair voltages (mV), cell 1 first; empty until group 2 read. */
     val cellsMv: List<Int> = emptyList(),
+    /** Balancing shunt active per cell pair (LBC group 6), cell 1 first. */
+    val shunts: List<Boolean> = emptyList(),
+    // VCM (0x797) UDS reads; units as in the LeafSpy log where it has a column
+    val vin: String? = null,
+    val qcCount: Int? = null,
+    val l1l2Count: Int? = null,
+    val aux12A: Double? = null,           // 12V battery current, - = drain
+    val motorPowerW: Int? = null,
+    val auxPower100W: Int? = null,
+    val acPower250W: Int? = null,         // A/C incl. PTC heater
+    val estAcPower50W: Int? = null,
+    val estHeaterPower250W: Int? = null,
+    val plugState: Int? = null,           // 0 unplugged, 1 partial, 2 plugged
+    val chargeMode: Int? = null,          // 0 none, 1 L1, 2 L2, 3 QC
+    val chargePowerW: Int? = null,
+    val gear: Int? = null,                // 1 P, 2 R, 3 N, 4 D, 7 B/Eco
+    /** Tire pressures PSI: FL, FR, RR, RL (0x385); null = no data. */
+    val tiresPsi: List<Double?> = emptyList(),
 ) {
     /** Instant DC power at the pack, kW. + discharge, - charge/regen. */
     val powerKw: Double?

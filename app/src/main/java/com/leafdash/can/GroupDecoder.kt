@@ -19,8 +19,23 @@ object GroupDecoder {
             0x01 -> group1(state, payload)
             0x02 -> group2(state, payload)
             0x04 -> group4(state, payload)
+            0x06 -> group6(state, payload)
             else -> state
         }
+    }
+
+    /**
+     * Group 6 (2106): balancing shunts, 24 bytes with 4 cells in each low
+     * nibble, cell 4i+0 = bit 3 ... 4i+3 = bit 0 (OVMS "8421" order). Bit
+     * order differs between public sources - verify against LeafSpy.
+     */
+    private fun group6(s: LeafState, p: ByteArray): LeafState {
+        if (p.size < 2 + 24) return s
+        val bits = (0 until 96).map { c ->
+            val nib = p[2 + c / 4].toInt() and 0x0F
+            (nib shr (3 - c % 4)) and 1 == 1
+        }
+        return s.copy(shunts = bits)
     }
 
     /** Group 2 (2102): 96 cell voltages, 2 bytes each, big-endian mV. */

@@ -8,8 +8,8 @@ import java.util.Locale
 /**
  * Per-sample data log in LeafSpy's published CSV layout (LeafSpy Help,
  * "Log File Format": columns A..EU, same labels and order) so tools that read
- * LeafSpy logs read ours. Values LeafDash cannot read (GPS, gids, pack amps,
- * tire pressures, power by consumer, charge counters...) are left blank.
+ * LeafSpy logs read ours. Values LeafDash cannot read (GPS, judgement, regen
+ * Wh, A/C pressure, HVolt2...) are left blank.
  */
 object LeafSpyLog {
 
@@ -42,11 +42,11 @@ object LeafSpyLog {
             SimpleDateFormat("MM/dd/yyyy H:mm:ss", Locale.US).format(Date(tMs)),
             "", "", "",                                        // Lat, Long, Elv (no GPS)
             f(leaf.speedKmh, 0),                               // car speed (not GPS)
-            "",                                                // Gids: not readable
+            leaf.gids?.toString() ?: "",                       // 0x5B3, if the car sends it
             leaf.socPercent?.let { Math.round(it * 10000).toString() } ?: "",
             leaf.ahCapacity?.let { Math.round(it * 10000).toString() } ?: "",
             f(avg?.let { it * 96 / 1000.0 } ?: leaf.packVolts, 2),
-            "",                                                // Pack Amps
+            f(leaf.packAmps, 2),                               // VCM 1248, + = discharge
             max?.toString() ?: "", min?.toString() ?: "",
             avg?.let { Math.round(it).toString() } ?: "",
             if (max != null && min != null) (max - min).toString() else "",
@@ -56,25 +56,29 @@ object LeafSpyLog {
             "na", "na",
             f(t4?.let(::toF), 1), f(t4, 1),
         ) + (0 until 96).map { cells.getOrNull(it)?.toString() ?: "" } + listOf(
-            "na",                                              // 12v Bat Amps (2011/12 only)
-            "",                                                // VIN
+            f(leaf.aux12A, 2).let { if (it.isEmpty()) "na" else it + "A" },
+            leaf.vin ?: "",
             f(leaf.hx, 2),
             leaf.aux12V?.let { f(it, 2) + "V" } ?: "",
             f(odoKm, 0),
-            "", "",                                            // QC, L1/L2
-            "", "", "", "",                                    // tire pressures
+            i(leaf.qcCount), i(leaf.l1l2Count),
+        ) + (0 until 4).map { f(leaf.tiresPsi.getOrNull(it), 2) } + listOf(  // FL FR RR RL
             f(leaf.ambientTempC?.let(::toF), 0),
             f(leaf.sohPercent, 2),
             "",                                                // RegenWh
             phoneBattery?.toString() ?: "",
             (tMs / 1000).toString(),
-            "", "", "", "", "", "",                            // power by consumer
-            "", "", "", "",                                    // plug, charge mode/power, gear
+            i(leaf.motorPowerW), i(leaf.auxPower100W), i(leaf.acPower250W),
+            "",                                                // A/C compressor pressure
+            i(leaf.estAcPower50W), i(leaf.estHeaterPower250W),
+            i(leaf.plugState), i(leaf.chargeMode), i(leaf.chargePowerW), i(leaf.gear),
             f(leaf.packVolts, 2), "",                          // HVolt1 (LBC), HVolt2
             "", "",                                            // GPS Status, Power SW
             "1", "0",                                          // BMS read, OBC not read
         )
     }
+
+    private fun i(v: Int?) = v?.toString() ?: ""
 
     private fun toF(c: Double) = c * 1.8 + 32.0
 
