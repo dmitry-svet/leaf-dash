@@ -1,7 +1,6 @@
 # CLAUDE.md — LeafDash
 
 Android (Compose) dashboard for a Nissan Leaf AZE0 via ELM327 Bluetooth SPP.
-Clean-room: public CAN decodings only, no LeafSpy code/assets.
 
 ## Build & test
 
