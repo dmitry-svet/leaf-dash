@@ -73,7 +73,8 @@ object LeafSpyLog {
             i(leaf.estAcPower50W), i(leaf.estHeaterPower250W),
             i(leaf.plugState), i(leaf.chargeMode), i(leaf.chargePowerW), i(leaf.gear),
             f(leaf.packVolts, 2), "",                          // HVolt1 (LBC), HVolt2
-            "", "",                                            // GPS Status, Power SW
+            "",                                                // GPS Status
+            leaf.powerSwitch?.let { if (it) "1" else "0" } ?: "",
             "1", "0",                                          // BMS read, OBC not read
         )
     }

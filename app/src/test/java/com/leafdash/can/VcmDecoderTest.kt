@@ -51,10 +51,17 @@ class VcmDecoderTest {
     }
 
     @Test fun decodesCurrents() {
-        var s = VcmDecoder.apply(LeafState(), 0x1248, bytes(0x62, 0x12, 0x48, 0xFF, 0xEC)) // -20 / 2
-        assertEquals(-10.0, s.packAmps!!, 1e-9)
-        s = VcmDecoder.apply(s, 0x1183, bytes(0x62, 0x11, 0x83, 0xF8, 0x47))              // s16 / 256
+        val s = VcmDecoder.apply(LeafState(), 0x1183, bytes(0x62, 0x11, 0x83, 0xF8, 0x47)) // s16 / 256
         assertEquals(-7.72, s.aux12A!!, 0.01)
+    }
+
+    @Test fun decodes12vVoltsAmbientPowerSwitch() {
+        var s = VcmDecoder.apply(LeafState(), 0x1103, bytes(0x62, 0x11, 0x03, 0xA2))    // 162 / 12.5
+        assertEquals(12.96, s.aux12V!!, 1e-9)
+        s = VcmDecoder.apply(s, 0x115D, bytes(0x62, 0x11, 0x5D, 0x6E))                 // 110*0.9-40.9 F
+        assertEquals((58.1 - 32) / 1.8, s.ambientTempVcmC!!, 0.01)
+        s = VcmDecoder.apply(s, 0x1304, bytes(0x62, 0x13, 0x04, 0x80, 0xBC))
+        assertEquals(true, s.powerSwitch)
     }
 
     @Test fun decodesVinStrippingPadding() {

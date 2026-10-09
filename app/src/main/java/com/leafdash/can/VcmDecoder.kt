@@ -9,10 +9,10 @@ package com.leafdash.can
 object VcmDecoder {
 
     /** DIDs polled every cycle (live values). */
-    val FAST = listOf(0x1146, 0x1152, 0x1151, 0x1261, 0x1262, 0x1156, 0x1248, 0x1183)
+    val FAST = listOf(0x1146, 0x1152, 0x1151, 0x1261, 0x1262, 0x1156, 0x1183, 0x1103, 0x1304)
 
-    /** DIDs that change rarely: counters and charge state. */
-    val SLOW = listOf(0x1203, 0x1205, 0x1234, 0x114E, 0x1236)
+    /** DIDs that change rarely: counters, charge state, outside temp. */
+    val SLOW = listOf(0x1203, 0x1205, 0x1234, 0x114E, 0x1236, 0x115D)
 
     fun apply(s: LeafState, did: Int, p: ByteArray): LeafState {
         if (p.size < 4 || u(p, 0) != 0x62 || ((u(p, 1) shl 8) or u(p, 2)) != did) return s
@@ -33,7 +33,9 @@ object VcmDecoder {
             0x114E -> s.copy(chargeMode = d(0))
             0x1236 -> if (two) s.copy(chargePowerW = u16() * 100) else s
             0x1156 -> s.copy(gear = d(0))
-            0x1248 -> if (two) s.copy(packAmps = s16() / 2.0) else s
+            0x1103 -> s.copy(aux12V = (d(0) / 12.5).takeIf { it in 5.0..20.0 } ?: s.aux12V)
+            0x115D -> s.copy(ambientTempVcmC = ((d(0) * 0.9 - 40.9) - 32.0) / 1.8)   // OBDb: F
+            0x1304 -> s.copy(powerSwitch = d(0) and 0x80 != 0)
             else -> s
         }
     }

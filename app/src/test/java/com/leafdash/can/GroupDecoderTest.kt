@@ -28,6 +28,30 @@ class GroupDecoderTest {
         assertEquals(28.31, s.socPercent!!, 0.01) // idx31-33 / 10000
     }
 
+    @Test fun decodesGroup1PackAmps() {
+        // real capture at rest: second current word p8-11 = 0x0000016A -> 362/1024
+        val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(
+            "7BB102961010000034A 7BB2102860000016AFF 7BB22FFFFFF073A2AF8 " +
+                "7BB23978F3263038500 7BB245C132C000CE117 7BB2500069B75800005"))
+        assertEquals(0.354, s.packAmps!!, 0.001)
+        assertEquals(47.93, s.hx!!, 0.01)          // 0x132C / 102.4
+    }
+
+    @Test fun decodesGroup61SohAndHx() {
+        // real capture: 61 61 13 2C 19 DD ... -> Hx 4908/102.4, SOH 6621/100
+        val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(
+            "7BB100C6161132C19DD 7BB21FF19DC19DD03FF"))
+        assertEquals(66.21, s.sohPercent!!, 0.001)
+        assertEquals(47.93, s.hx!!, 0.01)
+    }
+
+    @Test fun decodesMeterOdometerBeyondDeclaredLength() {
+        // meter (0x743) group 1 declares 8 bytes but the km count is in the
+        // consecutive frame: 0x02C06A = 180330 km
+        val p = IsoTp.reassemble("7631082610100000000 7632100000002C06A00", trim = false)
+        assertEquals(180330, GroupDecoder.meterOdometerKm(p))
+    }
+
     @Test fun decodesGroup4TempAverage() {
         val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(group4))
         assertEquals(28.67, s.batteryTempC!!, 0.01) // (30+28+28)/3

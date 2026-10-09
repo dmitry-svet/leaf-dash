@@ -145,9 +145,13 @@ class Elm327(private val transport: Transport) {
         }
     }
 
-    /** Point requests at ECU [tx] and accept replies only from [rx], e.g. "797"/"79A". */
-    fun useEcu(tx: String, rx: String) {
-        for (cmd in listOf("ATSH$tx", "ATFCSH$tx", "ATCRA$rx")) {
+    /**
+     * Point requests at ECU [tx] and accept replies only from [rx], e.g.
+     * "797"/"79A". [fcsd] = flow-control data (block size / separation time);
+     * the meter wants block size 1.
+     */
+    fun useEcu(tx: String, rx: String, fcsd: String = "300000") {
+        for (cmd in listOf("ATSH$tx", "ATFCSH$tx", "ATFCSD$fcsd", "ATCRA$rx")) {
             sendCommand(cmd)
             drainToPrompt()
         }

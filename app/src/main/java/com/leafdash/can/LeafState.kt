@@ -39,6 +39,11 @@ data class LeafState(
     val chargeMode: Int? = null,          // 0 none, 1 L1, 2 L2, 3 QC
     val chargePowerW: Int? = null,
     val gear: Int? = null,                // 1 P, 2 R, 3 N, 4 D, 7 B/Eco
+    val powerSwitch: Boolean? = null,     // VCM 1304: car power switch on
+    /** Outside temp from the VCM (115D), degrees C; the 0x510 one feeds the tile. */
+    val ambientTempVcmC: Double? = null,
+    /** Odometer in km from the meter ECU (0x743 group 1): the dash value, no unit guess. */
+    val meterOdoKm: Int? = null,
     /** Tire pressures PSI: FL, FR, RR, RL (0x385); null = no data. */
     val tiresPsi: List<Double?> = emptyList(),
 ) {

@@ -63,6 +63,8 @@ class LeafPoller(
 
     /** Battery-controller diagnostic groups to poll in active mode. */
     private val activeGroups = listOf("2101", "2102", "2103", "2104", "2105", "2106")
+    /** LBC groups that change slowly (2161 = SOH/Hx): every 10th cycle. */
+    private val slowGroups = listOf("2161")
 
     /** LBC (battery) diagnostic response id; odometer broadcast id (car-CAN). */
     private val lbcRxAddr = "7BB"
@@ -138,7 +140,7 @@ class LeafPoller(
             val status = ArrayList<String>()
             status.add("ELM: ${elm.elmId.ifBlank { "?" }}")
             status.add("Proto: ${elm.protocol.ifBlank { "?" }}")
-            for (g in activeGroups) {
+            for (g in activeGroups + if (cycle % 10 == 0) slowGroups else emptyList()) {
                 if (!running) break
                 val text = elm.queryRaw(g)
                 captured[g] = text
@@ -208,6 +210,8 @@ class LeafPoller(
                 status.add("gids: ${leaf.gids ?: "no data"}")
 
                 pollVcm(captured)
+                pollMeter(captured)
+                status.add("meter odo: ${leaf.meterOdoKm?.let { "$it km" } ?: "no data"}")
                 status.add("VIN: ${leaf.vin ?: "no data"}")
                 status.add("gear: ${leaf.gear ?: "-"}  motor: ${leaf.motorPowerW ?: "-"} W  QC/L1L2: ${leaf.qcCount ?: "-"}/${leaf.l1l2Count ?: "-"}")
 
@@ -268,6 +272,23 @@ class LeafPoller(
                 vcmFails[did] = (vcmFails[did] ?: 0) + 1
             }
         }
+        elm.useEcu("79B", lbcRxAddr)
+    }
+
+    /**
+     * Meter ECU (0x743 -> 0x763) group 1: odometer in km as the dash shows
+     * it. Needs flow control block size 1, and the km count lies past the
+     * declared ISO-TP length (reassemble without trimming). Skipped for the
+     * session after 3 failures.
+     */
+    private fun pollMeter(captured: MutableMap<String, String>) {
+        if (!running || (vcmFails[METER_KEY] ?: 0) >= 3) return
+        elm.useEcu("743", "763", fcsd = "300100")
+        val text = elm.queryRaw("2101")
+        captured["meter 2101"] = text
+        val km = GroupDecoder.meterOdometerKm(IsoTp.reassemble(text, trim = false))
+        if (km == null) vcmFails[METER_KEY] = (vcmFails[METER_KEY] ?: 0) + 1
+        else { vcmFails[METER_KEY] = 0; leaf = leaf.copy(meterOdoKm = km) }
         elm.useEcu("79B", lbcRxAddr)
     }
 
@@ -354,7 +375,8 @@ class LeafPoller(
             raw = raw,
             debug = debug,
             odometerKm = distanceKm,   // smooth session distance -> tracker
-            odoKm = odoDisplayKm,      // odometer reading -> Odo tile
+            // Odo tile / logs: the meter's own km when read, else 0x5C5 converted
+            odoKm = leaf.meterOdoKm?.toDouble() ?: odoDisplayKm,
         )
     }
 
@@ -367,6 +389,7 @@ class LeafPoller(
         const val SEED_GAIN = 1.0       // trust raw speed integral (matched car trip in logs)
         const val CALIB_MIN_KM = 16.0
         const val BROADCAST_TIMEOUT_MS = 1500L
-        const val VIN_DID = -1          // vcmFails key for the VIN request   // calibrate gain only past this raw distance
+        const val VIN_DID = -1          // vcmFails key for the VIN request
+        const val METER_KEY = -2        // vcmFails key for the meter odometer   // calibrate gain only past this raw distance
     }
 }

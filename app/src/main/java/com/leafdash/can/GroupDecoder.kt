@@ -20,8 +20,32 @@ object GroupDecoder {
             0x02 -> group2(state, payload)
             0x04 -> group4(state, payload)
             0x06 -> group6(state, payload)
+            0x61 -> group61(state, payload)
             else -> state
         }
+    }
+
+    /** Group 61 (2161): Hx p2-3 / 102.4, SOH% p4-5 / 100 (LBC's own, matches the dash tools). */
+    private fun group61(s: LeafState, p: ByteArray): LeafState {
+        if (p.size < 6) return s
+        fun u(i: Int) = p[i].toInt() and 0xFF
+        val hx = ((u(2) shl 8) or u(3)) / 102.4
+        val soh = ((u(4) shl 8) or u(5)) / 100.0
+        return s.copy(
+            hx = hx.takeIf { it in 0.0..200.0 } ?: s.hx,
+            sohPercent = soh.takeIf { it in 0.0..150.0 } ?: s.sohPercent,
+        )
+    }
+
+    /**
+     * Meter ECU (0x743) group 1: odometer km at p9-11 (OBDb: bit 56, 24 bits,
+     * counted after the 61 01 echo). The first frame declares far more bytes
+     * than the two frames carry, so reassemble with trim = false.
+     */
+    fun meterOdometerKm(p: ByteArray): Int? {
+        if (p.size < 12 || (p[0].toInt() and 0xFF) != 0x61 || (p[1].toInt() and 0xFF) != 0x01) return null
+        fun u(i: Int) = p[i].toInt() and 0xFF
+        return ((u(9) shl 16) or (u(10) shl 8) or u(11)).takeIf { it in 1..2_000_000 }
     }
 
     /**
@@ -48,13 +72,16 @@ object GroupDecoder {
         return s.copy(cellMinV = mv.min() / 1000.0, cellMaxV = mv.max() / 1000.0, cellsMv = all)
     }
 
-    /** Group 1 (2101): capacity Ah, Hx, derived SOH, candidate pack voltage. */
+    /** Group 1 (2101): capacity Ah, Hx, derived SOH (until 2161 arrives), pack V, pack A. */
     private fun group1(s: LeafState, p: ByteArray): LeafState {
         if (p.size < 38) return s
         fun u(i: Int) = p[i].toInt() and 0xFF
         // /102.4, not /100: matches LeafSpy side by side (raw 4910 -> 47.95 vs
         // LeafSpy 47.93, raw 5050 -> 49.32 vs 49.27)
         val hx = ((u(28) shl 8) or u(29)) / 102.4
+        // p8-11: signed current, /1024 A, + = discharge (dalathegreat); p2-5 is
+        // a noisier second reading
+        val amps = (((u(8) shl 24) or (u(9) shl 16) or (u(10) shl 8) or u(11))) / 1024.0
         val soc = ((u(31) shl 16) or (u(32) shl 8) or u(33)) / 10000.0
         val ah = ((u(35) shl 16) or (u(36) shl 8) or u(37)) / 10000.0
         val soh = if (ah > 0) ah / NEW_CAR_AH * 100.0 else null
@@ -65,6 +92,7 @@ object GroupDecoder {
             ahCapacity = ah.takeIf { it in 0.0..100.0 },
             sohPercent = soh?.takeIf { it in 0.0..150.0 },
             packVolts = packV.takeIf { it in 100.0..500.0 } ?: s.packVolts,
+            packAmps = amps.takeIf { it in -400.0..400.0 } ?: s.packAmps,
         )
     }
 
@@ -93,7 +121,7 @@ object IsoTp {
      * ISO-TP payload. Handles single, first, and consecutive frames; trims to
      * the length declared in the first frame (drops padding).
      */
-    fun reassemble(raw: String): ByteArray {
+    fun reassemble(raw: String, trim: Boolean = true): ByteArray {
         val out = ArrayList<Int>()
         var declared = -1
         var sawCf = false
@@ -121,7 +149,9 @@ object IsoTp {
         // CFs without their first frame = partial capture; no declared length to
         // trim padding by, so the payload can't be trusted
         if (sawCf && declared < 0) return ByteArray(0)
-        val res = if (declared in 0..out.size) out.subList(0, declared) else out
+        // some ECUs declare fewer bytes than they send (the meter's odometer
+        // sits past the declared length): trim = false keeps everything
+        val res = if (trim && declared in 0..out.size) out.subList(0, declared) else out
         return ByteArray(res.size) { res[it].toByte() }
     }
 

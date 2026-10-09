@@ -140,14 +140,22 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):
 a timer CR halts ATMA, and the read handles both "STOPPED" and a bare prompt.
 
-VCM UDS reads (`0x797` -> `0x79A`, `22 DID`, public OVMS/OBDb decodes, some
-single-source): every cycle `1146` motor W (x40), `1152` aux (100 W units),
-`1151` A/C+PTC (250 W), `1261`/`1262` est. A/C (50 W) / heater (250 W),
-`1156` gear, `1248` pack A (/2), `1183` 12V A (/256); every 10th cycle
-`1203`/`1205` QC / L1-L2 counts, `1234` plug, `114E` charge mode, `1236`
-charge W (x100); VIN `21 81` once. A DID failing 3 times in a row is skipped
-for the session. LBC `2106` = balancing shunts (nibble per byte, OVMS order,
-unverified: raw reply logged).
+VCM UDS reads (`0x797` -> `0x79A`, `22 DID`, public OVMS/OBDb decodes,
+confirmed on the car): every cycle `1146` motor W (x40), `1152` aux (100 W
+units), `1151` A/C+PTC (250 W), `1261`/`1262` est. A/C (50 W) / heater
+(250 W), `1156` gear, `1183` 12V A (/256), `1103` 12V V (/12.5), `1304`
+power switch; every 10th cycle `1203`/`1205` QC / L1-L2 counts, `1234` plug,
+`114E` charge mode, `1236` charge W (x100), `115D` outside temp; VIN `21 81`
+once. A DID failing 3 times in a row is skipped for the session.
+
+Meter ECU (`0x743` -> `0x763`, flow control block size 1) group `2101`:
+odometer in km as the dash shows it (p9-11, past the declared ISO-TP length)
+- feeds the Odo tile and logs when read, so no km/mi guess is needed there.
+
+LBC extras: `2161` every 10th cycle = Hx (p2-3 / 102.4) and SOH% (p4-5 / 100,
+the LBC's own figure); `2101` p8-11 = pack current (signed / 1024 A, + =
+discharge); `2106` = balancing shunts (nibble per byte, OVMS order,
+unverified: raw reply logged). Gids `0x5B3` is not broadcast on this car.
 
 Active ISO-TP polling of the LBC (`GroupDecoder`, request `0x79B` / reply
 `0x7BB`, groups `2101`–`2106`, verified against a real AZE0): kWh remaining,
