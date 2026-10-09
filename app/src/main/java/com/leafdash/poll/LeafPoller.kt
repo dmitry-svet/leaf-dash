@@ -190,12 +190,14 @@ class LeafPoller(
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
                 // broadcasts that may not exist on every car: timed reads, every
-                // 5th cycle; gids 0x5B3 dropped for the session after 3 misses
+                // 5th cycle. Gids 0x5B3 comes and goes on this car (LeafSpy sees
+                // it only sometimes, often after a reconnect), so after 3 misses
+                // keep trying at a slower rate instead of giving up
                 if (cycle % 5 == 0) {
                     elm.readBroadcastTimed(tireBroadcastId, BROADCAST_TIMEOUT_MS)?.let {
                         leaf = leaf.copy(tiresPsi = CanDecoder.tires(it))
                     }
-                    if (gidsMisses < 3) {
+                    if (gidsMisses < 3 || cycle % 20 == 0) {
                         val g = elm.readBroadcastTimed(gidsBroadcastId, BROADCAST_TIMEOUT_MS)
                         captured["gids $gidsBroadcastId"] = g?.data?.joinToString("") { "%02X".format(it) } ?: "(none)"
                         val gids = g?.let { CanDecoder.gids5b3(it) }

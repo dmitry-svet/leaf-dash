@@ -135,7 +135,7 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 | `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
 | `0x510` | ambient temp (B7*0.5 - 40 C) |
 | `0x385` | tire pressures FL/FR/RR/RL, B2..B5 / 4 PSI (timed read, every 5th cycle) |
-| `0x5B3` | gids ((B4&3)<<8 \| B5) - may not exist on AZE0; dropped after 3 misses |
+| `0x5B3` | gids ((B4&3)<<8 \| B5) - intermittent on this AZE0 (LeafSpy too); after 3 misses retried every 20th cycle |
 
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):
 a timer CR halts ATMA, and the read handles both "STOPPED" and a bare prompt.
