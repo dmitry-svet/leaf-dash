@@ -9,10 +9,10 @@ package com.leafdash.can
 object VcmDecoder {
 
     /** DIDs polled every cycle (live values). */
-    val FAST = listOf(0x1146, 0x1152, 0x1151, 0x1261, 0x1262, 0x1156, 0x1183, 0x1103, 0x1304)
+    val FAST = listOf(0x1146, 0x1152, 0x1151, 0x1156, 0x1183)
 
-    /** DIDs that change rarely: counters, charge state, outside temp. */
-    val SLOW = listOf(0x1203, 0x1205, 0x1234, 0x114E, 0x1236, 0x115D)
+    /** DIDs that change slowly (every 10th cycle): keeps the poll cycle short. */
+    val SLOW = listOf(0x1261, 0x1262, 0x1103, 0x1304, 0x1203, 0x1205, 0x1234, 0x114E, 0x1236, 0x115D)
 
     fun apply(s: LeafState, did: Int, p: ByteArray): LeafState {
         if (p.size < 4 || u(p, 0) != 0x62 || ((u(p, 1) shl 8) or u(p, 2)) != did) return s

@@ -33,7 +33,7 @@ class GroupDecoderTest {
         val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(
             "7BB102961010000034A 7BB2102860000016AFF 7BB22FFFFFF073A2AF8 " +
                 "7BB23978F3263038500 7BB245C132C000CE117 7BB2500069B75800005"))
-        assertEquals(0.354, s.packAmps!!, 0.001)
+        assertEquals(-0.354, s.packAmps!!, 0.001)    // raw +362 at rest = slight charge/noise
         assertEquals(47.93, s.hx!!, 0.01)          // 0x132C / 102.4
     }
 
@@ -43,6 +43,9 @@ class GroupDecoderTest {
             "7BB100C6161132C19DD 7BB21FF19DC19DD03FF"))
         assertEquals(66.21, s.sohPercent!!, 0.001)
         assertEquals(47.93, s.hx!!, 0.01)
+        // a later group 1 must not overwrite it with the Ah/66 estimate
+        val after = GroupDecoder.apply(s, IsoTp.reassemble(group1))
+        assertEquals(66.21, after.sohPercent!!, 0.001)
     }
 
     @Test fun decodesMeterOdometerBeyondDeclaredLength() {

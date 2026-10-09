@@ -79,9 +79,10 @@ object GroupDecoder {
         // /102.4, not /100: matches LeafSpy side by side (raw 4910 -> 47.95 vs
         // LeafSpy 47.93, raw 5050 -> 49.32 vs 49.27)
         val hx = ((u(28) shl 8) or u(29)) / 102.4
-        // p8-11: signed current, /1024 A, + = discharge (dalathegreat); p2-5 is
-        // a noisier second reading
-        val amps = (((u(8) shl 24) or (u(9) shl 16) or (u(10) shl 8) or u(11))) / 1024.0
+        // p8-11: signed current /1024 A; raw is negative while driving (-29 A
+        // at 20 kW on the car), so flip to our + = discharge convention. p2-5
+        // is a noisier second reading.
+        val amps = -(((u(8) shl 24) or (u(9) shl 16) or (u(10) shl 8) or u(11))) / 1024.0
         val soc = ((u(31) shl 16) or (u(32) shl 8) or u(33)) / 10000.0
         val ah = ((u(35) shl 16) or (u(36) shl 8) or u(37)) / 10000.0
         val soh = if (ah > 0) ah / NEW_CAR_AH * 100.0 else null
@@ -90,7 +91,8 @@ object GroupDecoder {
             hx = hx.takeIf { it in 0.0..200.0 },
             socPercent = soc.takeIf { it in 0.0..100.0 } ?: s.socPercent,
             ahCapacity = ah.takeIf { it in 0.0..100.0 },
-            sohPercent = soh?.takeIf { it in 0.0..150.0 },
+            // Ah/66 estimate only until group 2161 supplies the LBC's own SOH
+            sohPercent = s.sohPercent ?: soh?.takeIf { it in 0.0..150.0 },
             packVolts = packV.takeIf { it in 100.0..500.0 } ?: s.packVolts,
             packAmps = amps.takeIf { it in -400.0..400.0 } ?: s.packAmps,
         )

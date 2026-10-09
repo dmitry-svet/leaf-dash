@@ -135,16 +135,16 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 | `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
 | `0x510` | ambient temp (B7*0.5 - 40 C) |
 | `0x385` | tire pressures FL/FR/RR/RL, B2..B5 / 4 PSI (timed read, every 5th cycle) |
-| `0x5B3` | gids ((B4&3)<<8 \| B5) - intermittent on this AZE0 (LeafSpy too); after 3 misses retried every 20th cycle |
+| `0x5B3` | gids ((B4&3)<<8 \| B5) - sent only in READY/driving; after 3 misses retried every 20th cycle |
 
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):
 a timer CR halts ATMA, and the read handles both "STOPPED" and a bare prompt.
 
 VCM UDS reads (`0x797` -> `0x79A`, `22 DID`, public OVMS/OBDb decodes,
 confirmed on the car): every cycle `1146` motor W (x40), `1152` aux (100 W
-units), `1151` A/C+PTC (250 W), `1261`/`1262` est. A/C (50 W) / heater
-(250 W), `1156` gear, `1183` 12V A (/256), `1103` 12V V (/12.5), `1304`
-power switch; every 10th cycle `1203`/`1205` QC / L1-L2 counts, `1234` plug,
+units), `1151` A/C+PTC (250 W), `1156` gear, `1183` 12V A (/256); every
+10th cycle `1261`/`1262` est. A/C (50 W) / heater (250 W), `1103` 12V V
+(/12.5), `1304` power switch, `1203`/`1205` QC / L1-L2 counts, `1234` plug,
 `114E` charge mode, `1236` charge W (x100), `115D` outside temp; VIN `21 81`
 once. A DID failing 3 times in a row is skipped for the session.
 
@@ -153,9 +153,11 @@ odometer in km as the dash shows it (p9-11, past the declared ISO-TP length)
 - feeds the Odo tile and logs when read, so no km/mi guess is needed there.
 
 LBC extras: `2161` every 10th cycle = Hx (p2-3 / 102.4) and SOH% (p4-5 / 100,
-the LBC's own figure); `2101` p8-11 = pack current (signed / 1024 A, + =
-discharge); `2106` = balancing shunts (nibble per byte, OVMS order,
-unverified: raw reply logged). Gids `0x5B3` is not broadcast on this car.
+the LBC's own figure, which group 1 no longer overwrites); `2101` p8-11 =
+pack current (signed / 1024 A, raw sign flipped so + = discharge); `2106` =
+balancing shunts (nibble per byte, OVMS order, unverified: raw reply
+logged). Gids `0x5B3` is broadcast only while the car is in READY/driving
+(zero while parked, which is when LeafSpy shows 0 too).
 
 Active ISO-TP polling of the LBC (`GroupDecoder`, request `0x79B` / reply
 `0x7BB`, groups `2101`–`2106`, verified against a real AZE0): kWh remaining,
