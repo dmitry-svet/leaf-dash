@@ -48,13 +48,16 @@ one row per window, legend on top):
   keeps its header row and date/time column frozen while scrolling (the CSV
   keeps separate Date and Time columns).
 - **Data log, LeafSpy format** (Settings, on by default): one row per poll
-  cycle in LeafSpy's published CSV layout (151 columns A..EU, same labels
-  and order) so LeafSpy log tools can read it: SOC/AHr (x10000), pack V
+  cycle in the CSV layout of a real LeafSpy 0.52 log (161 columns: the
+  published A..EU set plus Debug, Motor/Inverter temps, Speed1/2, Wiper,
+  Torque Nm, RPM; same labels, order and value formats) so LeafSpy log
+  tools can read it: SOC/AHr (x10000), pack V
   (avg cell pair x 96), max/min/avg cell pair mV and diff, all 96 cell pairs,
   pack temps (sensors 1/2/4, F and C), Hx, SOH, 12V, odometer km, ambient F,
-  car speed (in the GPS speed column), phone battery, epoch, HVolt1. Fields
-  LeafDash can't read (GPS, gids, pack amps, tires, power by consumer,
-  charge counters, VIN) are blank. One file per drive start day:
+  car speed (in the GPS speed column, and x100 as Speed1), phone battery,
+  epoch, HVolt1/2, motor RPM and torque (VCM 1255/1254), gids, pack amps,
+  tires, power by consumer, charge counters, VIN. Fields LeafDash can't
+  read (GPS, regen Wh, A/C pressure, motor/inverter temps) are blank. One file per drive start day:
   `Android/data/com.svet.leafdash/files/LOG_FILES/Log_LeafDash_YYMMDD.csv`;
   "Export data log CSV" merges all days into one file.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:

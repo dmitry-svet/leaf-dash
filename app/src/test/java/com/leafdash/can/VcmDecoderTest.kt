@@ -64,6 +64,15 @@ class VcmDecoderTest {
         assertEquals(true, s.powerSwitch)
     }
 
+    @Test fun decodesRpmAndTorque() {
+        var s = VcmDecoder.apply(LeafState(), 0x1255, bytes(0x62, 0x12, 0x55, 0x0B, 0xF7))   // 3063
+        assertEquals(3063, s.motorRpm)
+        s = VcmDecoder.apply(s, 0x1254, bytes(0x62, 0x12, 0x54, 0x16, 0x20))                 // 5664 / 64
+        assertEquals(88.5, s.torqueNm!!, 1e-9)
+        s = VcmDecoder.apply(s, 0x1254, bytes(0x62, 0x12, 0x54, 0xFF, 0xB0))                 // -80 / 64
+        assertEquals(-1.25, s.torqueNm!!, 1e-9)
+    }
+
     @Test fun decodesVinStrippingPadding() {
         val vin = "1N4AZ0CP2DC401434"
         val p = bytes(0x61, 0x81) + vin.toByteArray(Charsets.US_ASCII) + bytes(0, 0)
