@@ -42,6 +42,7 @@ class GroupDecoderTest {
         val s = GroupDecoder.apply(LeafState(), IsoTp.reassemble(
             "7BB100C6161132C19DD 7BB21FF19DC19DD03FF"))
         assertEquals(66.21, s.sohPercent!!, 0.001)
+        assertEquals(true, s.sohFromLbc)
         assertEquals(47.93, s.hx!!, 0.01)
         // a later group 1 must not overwrite it with the Ah/66 estimate
         val after = GroupDecoder.apply(s, IsoTp.reassemble(group1))

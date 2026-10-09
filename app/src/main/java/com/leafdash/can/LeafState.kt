@@ -15,6 +15,8 @@ data class LeafState(
     val speedKmh: Double? = null,
     // from active LBC group polling
     val sohPercent: Double? = null,
+    /** True once [sohPercent] comes from LBC group 2161 (not the Ah/66 estimate). */
+    val sohFromLbc: Boolean = false,
     val ahCapacity: Double? = null,
     val hx: Double? = null,
     val batteryTempsC: List<Double> = emptyList(),

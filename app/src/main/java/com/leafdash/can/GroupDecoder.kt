@@ -34,6 +34,7 @@ object GroupDecoder {
         return s.copy(
             hx = hx.takeIf { it in 0.0..200.0 } ?: s.hx,
             sohPercent = soh.takeIf { it in 0.0..150.0 } ?: s.sohPercent,
+            sohFromLbc = s.sohFromLbc || soh in 0.0..150.0,
         )
     }
 

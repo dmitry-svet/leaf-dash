@@ -140,7 +140,11 @@ class LeafPoller(
             val status = ArrayList<String>()
             status.add("ELM: ${elm.elmId.ifBlank { "?" }}")
             status.add("Proto: ${elm.protocol.ifBlank { "?" }}")
-            for (g in activeGroups + if (cycle % 10 == 0) slowGroups else emptyList()) {
+            // slow groups every 10th cycle, but 2161 every cycle until its SOH is
+            // in (after a reconnect the first reads can fail and the Ah/66
+            // estimate would show for ~45 s otherwise)
+            val slow = cycle % 10 == 0 || !leaf.sohFromLbc
+            for (g in activeGroups + if (slow) slowGroups else emptyList()) {
                 if (!running) break
                 val text = elm.queryRaw(g)
                 captured[g] = text

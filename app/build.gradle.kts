@@ -19,8 +19,8 @@ android {
         applicationId = "com.svet.leafdash"
         minSdk = 23
         targetSdk = 34
-        versionCode = 79
-        versionName = "0.79"
+        versionCode = 80
+        versionName = "0.80"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -153,7 +153,7 @@ odometer in km as the dash shows it (p9-11, past the declared ISO-TP length)
 - feeds the Odo tile and logs when read, so no km/mi guess is needed there.
 
 LBC extras: `2161` every 10th cycle = Hx (p2-3 / 102.4) and SOH% (p4-5 / 100,
-the LBC's own figure, which group 1 no longer overwrites); `2101` p8-11 =
+the LBC's own figure, which group 1 no longer overwrites; polled every cycle until it is in); `2101` p8-11 =
 pack current (signed / 1024 A, raw sign flipped so + = discharge); `2106` =
 balancing shunts (nibble per byte, OVMS order, unverified: raw reply
 logged). Gids `0x5B3` is broadcast only while the car is in READY/driving
