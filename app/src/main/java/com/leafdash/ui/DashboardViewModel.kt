@@ -248,19 +248,25 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private fun logDataRow(ps: DashState) {
         if (!_dataLogEnabled.value) return
         val now = System.currentTimeMillis()
-        val day = tripLogger?.current?.startMs ?: now          // drive's start day
         val bm = getApplication<Application>().getSystemService(android.os.BatteryManager::class.java)
         val phoneBattery = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
             ?.takeIf { it in 0..100 }
         val row = com.leafdash.log.LeafSpyLog.row(now, ps.leaf, ps.odoKm, phoneBattery)
-        viewModelScope.launch(tripLogIo) { runCatching { dataLogStore.append(day, row) } }
+        viewModelScope.launch(tripLogIo) { runCatching { dataLogStore.append(now, row) } }
     }
 
-    /** Enable/disable the LeafSpy-format data log; persisted. */
+    /**
+     * Start/stop the LeafSpy-format data log; persisted. Each start begins a
+     * new file (lazily, with the first row); stop closes the current one.
+     */
     fun setDataLog(on: Boolean) {
         _dataLogEnabled.value = on
+        if (!on) dataLogStore.stop()
         viewModelScope.launch { tripStore.saveDataLogEnabled(on) }
     }
+
+    /** Running data log file, else the newest one; null if none yet. */
+    fun latestDataLogFile(): java.io.File? = dataLogStore.latest()
 
     /** Writes all data log days, merged, to [out] (blocking: call off main). */
     fun exportDataLog(out: java.io.OutputStream) = dataLogStore.exportAll(out)

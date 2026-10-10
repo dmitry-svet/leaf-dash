@@ -182,6 +182,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val diagOn by vm.logEnabled.collectAsState()
+        val dataLogOn by vm.dataLogEnabled.collectAsState()
         DashboardScreen(
             state = state,
             onConnect = ::onConnect,
@@ -190,6 +191,9 @@ class MainActivity : ComponentActivity() {
             onResetTrip = { vm.resetTrip() },
             onOpenSettings = { showSettings = true },
             showDiag = diagOn,
+            dataLogOn = dataLogOn,
+            onToggleDataLog = { vm.setDataLog(!dataLogOn) },
+            onSendDataLog = { sendDataLog() },
         )
 
         if (showPicker && adapter != null) {
@@ -233,6 +237,27 @@ class MainActivity : ComponentActivity() {
                 }
             },
         )
+    }
+
+    /** Share the running/latest data log file: Telegram if installed, else the share sheet. */
+    private fun sendDataLog() {
+        val file = vm.latestDataLogFile()
+        if (file == null || !file.exists()) {
+            android.widget.Toast.makeText(this, "No data log yet", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, file.name)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val telegram = listOf("org.telegram.messenger", "org.telegram.messenger.web", "org.thunderdog.challegram")
+            .firstOrNull { pkg -> runCatching { packageManager.getPackageInfo(pkg, 0) }.isSuccess }
+        if (telegram != null) send.setPackage(telegram)
+        runCatching { startActivity(android.content.Intent.createChooser(send, "Send data log")) }
+            .onFailure { android.widget.Toast.makeText(this, "No app to send to", android.widget.Toast.LENGTH_SHORT).show() }
     }
 
     // --- permission / device helpers (guarded for API level) ---

@@ -48,6 +48,9 @@ fun DashboardScreen(
     onResetTrip: () -> Unit,
     onOpenSettings: () -> Unit,
     showDiag: Boolean = false,
+    dataLogOn: Boolean = false,
+    onToggleDataLog: () -> Unit = {},
+    onSendDataLog: () -> Unit = {},
 ) {
     Column(
         Modifier
@@ -95,6 +98,22 @@ fun DashboardScreen(
         }
         if (state.connecting && state.connectMsg != null) {
             Text(state.connectMsg, style = MaterialTheme.typography.bodyMedium)
+        }
+        // data log (LeafSpy format): start/stop = one file per session; send
+        // hands the current/latest file to Telegram or the share sheet
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            TextButton(onClick = onToggleDataLog) {
+                Text(
+                    if (dataLogOn) "\u25A0 Stop log" else "\u25CF Start log",
+                    color = if (dataLogOn) Color(0xFFC62828) else MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            TextButton(onClick = onSendDataLog) { Text("Send log") }
         }
 
         // live tiles + energy economy: side by side in landscape, stacked in

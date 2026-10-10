@@ -89,7 +89,8 @@ fun SettingsScreen(
             Switch(checked = dataLogEnabled, onCheckedChange = onSetDataLog)
         }
         Text(
-            "One row per sample in LeafSpy's CSV layout, a file per day: $dataLogPath",
+            "One row per sample in LeafSpy's CSV layout, a file per Start..Stop " +
+                "(buttons on the dashboard): $dataLogPath",
             style = MaterialTheme.typography.bodySmall,
         )
         OutlinedButton(onClick = onExportDataLog, modifier = Modifier.fillMaxWidth()) {

@@ -57,9 +57,12 @@ one row per window, legend on top):
   car speed (in the GPS speed column, and x100 as Speed1), phone battery,
   epoch, HVolt1/2, motor RPM and torque (VCM 1255/1254), gids, pack amps,
   tires, power by consumer, charge counters, VIN. Fields LeafDash can't
-  read (GPS, regen Wh, A/C pressure, motor/inverter temps) are blank. One file per drive start day:
-  `Android/data/com.svet.leafdash/files/LOG_FILES/Log_LeafDash_YYMMDD.csv`;
-  "Export data log CSV" merges all days into one file.
+  read (GPS, regen Wh, A/C pressure, motor/inverter temps) are blank.
+  Dashboard buttons: **Start log / Stop log** (one file per session, named
+  by start time: `Android/data/com.svet.leafdash/files/LOG_FILES/
+  Log_LeafDash_YYMMDD_HHmmss.csv`) and **Send log** (hands the running or
+  latest file to Telegram if installed, else the share sheet). Settings'
+  "Export data log CSV" merges all sessions into one file.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
