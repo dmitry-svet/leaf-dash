@@ -143,18 +143,20 @@ class LeafPoller(
             val status = ArrayList<String>()
             status.add("ELM: ${elm.elmId.ifBlank { "?" }}")
             status.add("Proto: ${elm.protocol.ifBlank { "?" }}")
-            // fast mode (power test screen): only pack A/V (2101) and speed,
-            // ~1 s per sample instead of ~5
+            // fast mode (power test screen): only pack A/V (2101), all cell
+            // voltages (2102) and speed - ~1.5 s per sample instead of ~5
             if (fastCurrent) {
-                val text = elm.queryRaw("2101")
-                captured["2101"] = text
-                leaf = GroupDecoder.apply(leaf, IsoTp.reassemble(text))
+                for (g in listOf("2101", "2102")) {
+                    val text = elm.queryRaw(g)
+                    captured[g] = text
+                    leaf = GroupDecoder.apply(leaf, IsoTp.reassemble(text))
+                }
                 val sf = elm.readBroadcast(speedBroadcastId)
                 val speed = sf?.let { (((it.u(4) shl 8) or it.u(5)) / 100.0).takeIf { s -> s in 0.0..300.0 } }
                 leaf = leaf.copy(speedKmh = speed)
                 updateDistance(null, speed, System.currentTimeMillis())
                 elm.setRxAddr(lbcRxAddr)
-                status.add("fast mode: pack A/V + speed")
+                status.add("fast mode: pack A/V, cells, speed")
                 cycle++
                 raw = captured
                 debug = status

@@ -28,32 +28,43 @@ class PowerTest {
     var steadyAmps: Double? = null
         private set
 
+    /** Cell with the biggest voltage drop cruise -> peak (1-based), and that drop in mV. */
+    var worstCell: Int? = null
+        private set
+    var worstDropMv: Int? = null
+        private set
+
     private var steadyCount = 0
     private var steadyV = 0.0
+    private var steadyCells: List<Int> = emptyList()
+    private var peakCells: List<Int> = emptyList()
     private var intermediates = 0     // samples between cruise and the >= 250 A step
     private var sawRegen = false
     private var floorSamples = 0
     private var peakV = 0.0
 
-    fun onSample(amps: Double, volts: Double) {
+    fun onSample(amps: Double, volts: Double, cellsMv: List<Int> = emptyList()) {
         when (phase) {
-            Phase.IDLE -> if (amps in CRUISE) startCountdown(amps, volts)
+            Phase.IDLE -> if (amps in CRUISE) startCountdown(amps, volts, cellsMv)
             Phase.COUNTDOWN -> if (amps in CRUISE) {
-                steadyCount++; steadyAmps = amps; steadyV = volts
+                steadyCount++; steadyAmps = amps; steadyV = volts; steadyCells = cellsMv
             } else {
                 reset("Струм вийшов за 30–60 А. Тримайте рівний газ і спробуйте ще.")
             }
             Phase.FLOOR -> {
                 floorSamples++
                 when {
-                    amps >= STEP_A -> { phase = Phase.RELEASE; message = "ВІДПУСКАЙ"; peakAmps = amps; peakV = volts }
+                    amps >= STEP_A -> {
+                        phase = Phase.RELEASE; message = "ВІДПУСКАЙ"
+                        peakAmps = amps; peakV = volts; peakCells = cellsMv
+                    }
                     amps < 0 -> sawRegen = true
                     amps > CRUISE.endInclusive -> intermediates++
                 }
                 if (phase == Phase.FLOOR && floorSamples >= FLOOR_TIMEOUT) finish()
             }
             Phase.RELEASE -> if (amps >= STEP_A) {
-                if (amps > peakAmps!!) { peakAmps = amps; peakV = volts }
+                if (amps > peakAmps!!) { peakAmps = amps; peakV = volts; peakCells = cellsMv }
             } else finish()
             Phase.RESULT -> {}
         }
@@ -69,10 +80,11 @@ class PowerTest {
 
     fun restart() = reset(IDLE_MSG)
 
-    private fun startCountdown(amps: Double, volts: Double) {
+    private fun startCountdown(amps: Double, volts: Double, cellsMv: List<Int>) {
         phase = Phase.COUNTDOWN
         countdown = COUNTDOWN_S
-        steadyCount = 1; steadyAmps = amps; steadyV = volts
+        steadyCount = 1; steadyAmps = amps; steadyV = volts; steadyCells = cellsMv
+        peakCells = emptyList(); worstCell = null; worstDropMv = null
         intermediates = 0; sawRegen = false; floorSamples = 0
         peakAmps = null; packMilliOhm = null; ok = false
         message = "$countdown"
@@ -96,6 +108,17 @@ class PowerTest {
             Locale.US, "OK: %.0f A / %.1f V → %.0f A / %.1f V\nR = %.0f мОм (%.2f мОм/ячейку)",
             steadyAmps, steadyV, peak, peakV, r, r / 96.0,
         )
+        if (steadyCells.size == 96 && peakCells.size == 96) {
+            val drops = steadyCells.indices.map { steadyCells[it] - peakCells[it] }
+            val worst = drops.indices.maxByOrNull { drops[it] }!!
+            worstCell = worst + 1
+            worstDropMv = drops[worst]
+            val minPeak = peakCells.indices.minByOrNull { peakCells[it] }!!
+            message += String.format(
+                Locale.US, "\nНайбільша просадка: #%d −%d мВ (%.3f V на піку)\nМін. на піку: #%d %.3f V",
+                worst + 1, drops[worst], peakCells[worst] / 1000.0, minPeak + 1, peakCells[minPeak] / 1000.0,
+            )
+        }
     }
 
     private fun reset(msg: String) {

@@ -103,6 +103,20 @@ class PowerTestTest {
         assertTrue(t.message, t.message.contains("підлогу"))
     }
 
+    @Test fun reportsWorstCellDrop() {
+        val t = PowerTest()
+        val cruiseCells = List(96) { 3950 }
+        val peakCells = List(96) { i -> if (i == 16) 3400 else 3700 }   // cell #17 sags most
+        repeat(5) { t.onSample(50.0, 379.0, cruiseCells) }
+        repeat(PowerTest.COUNTDOWN_S) { t.onTick() }
+        t.onSample(290.0, 349.0, peakCells)
+        t.onSample(40.0, 380.0, cruiseCells)
+        assertTrue(t.ok)
+        assertEquals(17, t.worstCell)
+        assertEquals(550, t.worstDropMv)
+        assertTrue(t.message, t.message.contains("#17"))
+    }
+
     @Test fun restartGoesIdle() {
         val t = run(6, 290.0, 50.0)
         t.restart()

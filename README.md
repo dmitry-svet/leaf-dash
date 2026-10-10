@@ -70,8 +70,10 @@ one row per window, legend on top):
   (pack mOhm and per cell). Verdicts: regen between cruise and step = run
   void; more than one intermediate sample = pedal not pressed abruptly;
   fewer than 4 cruise samples = too little time before the step; peak
-  below 270 A = not floored. While the screen is open the poller reads
-  only pack A/V and speed (~1 s samples).
+  below 270 A = not floored. An OK run also names the cell with the
+  biggest cruise-to-peak drop and the lowest cell at the peak. While the
+  screen is open the poller reads only pack A/V, all 96 cells and speed
+  (~1.5 s samples), so the data log keeps full cell data during the test.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL

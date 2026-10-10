@@ -45,7 +45,7 @@ fun PowerTestScreen(state: DashState, onBack: () -> Unit, setFast: (Boolean) -> 
     LaunchedEffect(state.cycle) {
         val a = state.leaf.packAmps
         val v = state.leaf.packVolts
-        if (state.connected && a != null && v != null) { test.onSample(a, v); rev++ }
+        if (state.connected && a != null && v != null) { test.onSample(a, v, state.leaf.cellsMv); rev++ }
     }
     LaunchedEffect(Unit) {
         while (true) { delay(1000); test.onTick(); rev++ }
@@ -79,8 +79,8 @@ fun PowerTestScreen(state: DashState, onBack: () -> Unit, setFast: (Boolean) -> 
         ) {
             Text(
                 test.message,
-                fontSize = if (big) 72.sp else 24.sp,
-                lineHeight = if (big) 80.sp else 32.sp,
+                fontSize = if (big) 72.sp else 22.sp,
+                lineHeight = if (big) 80.sp else 30.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 color = when {
