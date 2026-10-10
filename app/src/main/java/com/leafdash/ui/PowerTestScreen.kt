@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,11 +64,14 @@ fun PowerTestScreen(state: DashState, onBack: () -> Unit, setFast: (Boolean) -> 
             TextButton(onClick = onBack) { Text("‹ Back") }
             Text("Power test", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Live("A", state.leaf.packAmps?.let { "%.0f".format(it) } ?: "--")
-            Live("V", state.leaf.packVolts?.let { "%.1f".format(it) } ?: "--")
-            Live("km/h", state.leaf.speedKmh?.let { "%.0f".format(it) } ?: "--")
-            Live("cell min", state.leaf.cellMinV?.let { "%.3f".format(it) } ?: "--")
+        // live readings, two per row, big enough to read while driving
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Live("Pack A", state.leaf.packAmps?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+            Live("Pack V", state.leaf.packVolts?.let { "%.1f".format(it) } ?: "--", Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Live("km/h", state.leaf.speedKmh?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+            Live("Cell min V", state.leaf.cellMinV?.let { "%.3f".format(it) } ?: "--", Modifier.weight(1f))
         }
         if (!state.connected) {
             Text("Not connected", color = danger, style = MaterialTheme.typography.titleMedium)
@@ -98,9 +102,11 @@ fun PowerTestScreen(state: DashState, onBack: () -> Unit, setFast: (Boolean) -> 
 }
 
 @Composable
-private fun Live(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall)
-        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+private fun Live(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.titleMedium)
+            Text(value, fontSize = 44.sp, lineHeight = 50.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
     }
 }
