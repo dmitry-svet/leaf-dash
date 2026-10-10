@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,8 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
+    onOpenPowerTest: () -> Unit,
+    onSendDataLog: () -> Unit,
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
     dataLogPath: String,
@@ -64,6 +67,9 @@ fun SettingsScreen(
 
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text("Trip log")
+        }
+        OutlinedButton(onClick = onOpenPowerTest, modifier = Modifier.fillMaxWidth()) {
+            Text("Power test (battery resistance)")
         }
 
         Row(
@@ -87,6 +93,15 @@ fun SettingsScreen(
         ) {
             Text("Data log (LeafSpy format)", style = MaterialTheme.typography.titleMedium)
             Switch(checked = dataLogEnabled, onCheckedChange = onSetDataLog)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { onSetDataLog(!dataLogEnabled) }, modifier = Modifier.weight(1f)) {
+                Text(
+                    if (dataLogEnabled) "\u25A0 Stop log" else "\u25CF Start log",
+                    color = if (dataLogEnabled) Color(0xFFC62828) else MaterialTheme.colorScheme.primary,
+                )
+            }
+            OutlinedButton(onClick = onSendDataLog, modifier = Modifier.weight(1f)) { Text("Send log") }
         }
         Text(
             "One row per sample in LeafSpy's CSV layout, a file per Start..Stop " +

@@ -172,6 +172,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             val session = ++sessionNo
             val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
+            p.fastCurrent = fastCurrent
             poller = p
 
             collectJob?.cancel()
@@ -214,6 +215,14 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun resetTrip() = tracker?.resetTrip()
+
+    @Volatile private var fastCurrent = false
+
+    /** Power test screen: poll only pack A/V + speed (~1 s samples). */
+    fun setFastCurrent(on: Boolean) {
+        fastCurrent = on
+        poller?.fastCurrent = on
+    }
 
     private fun logTripSample(ps: DashState, distKm: Double, session: Int) {
         val logger = tripLogger ?: return

@@ -29,4 +29,6 @@ data class DashState(
     /** Unusable bottom-of-pack energy (kWh, user setting): subtracted from
      *  kWh remaining for range predictions (weak cells cut power early). */
     val reserveKwh: Double = 0.0,
+    /** Poll cycle counter: increments once per fresh set of readings. */
+    val cycle: Int = 0,
 )
