@@ -48,7 +48,7 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
-    onOpenPowerTest: () -> Unit,
+    tiresPsi: List<Double?>,
     onSendDataLog: () -> Unit,
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
@@ -68,9 +68,22 @@ fun SettingsScreen(
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text("Trip log")
         }
-        OutlinedButton(onClick = onOpenPowerTest, modifier = Modifier.fillMaxWidth()) {
-            Text("Power test (battery resistance)")
+        Text("Tire pressure", style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((i, label) in listOf("FL", "FR", "RR", "RL").withIndex()) {
+                val psi = tiresPsi.getOrNull(i)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(label, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        if (psi == null) "--" else "%.1f".format(psi),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(if (psi == null) "" else "%.2f bar".format(psi * 0.0689476), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
+        Text("PSI from the car's TPMS (CAN 0x385), refreshed every ~25 s while connected.", style = MaterialTheme.typography.bodySmall)
 
         Row(
             Modifier.fillMaxWidth(),

@@ -59,9 +59,6 @@ class LeafPoller(
     @Volatile private var unitsMiles = false
     fun setUnitsMiles(m: Boolean) { unitsMiles = m }
 
-    /** Power test screen open: poll only pack current/voltage and speed. */
-    @Volatile var fastCurrent = false
-
     @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
@@ -143,27 +140,6 @@ class LeafPoller(
             val status = ArrayList<String>()
             status.add("ELM: ${elm.elmId.ifBlank { "?" }}")
             status.add("Proto: ${elm.protocol.ifBlank { "?" }}")
-            // fast mode (power test screen): only pack A/V (2101), all cell
-            // voltages (2102) and speed - ~1.5 s per sample instead of ~5
-            if (fastCurrent) {
-                for (g in listOf("2101", "2102")) {
-                    val text = elm.queryRaw(g)
-                    captured[g] = text
-                    leaf = GroupDecoder.apply(leaf, IsoTp.reassemble(text))
-                }
-                val sf = elm.readBroadcast(speedBroadcastId)
-                val speed = sf?.let { (((it.u(4) shl 8) or it.u(5)) / 100.0).takeIf { s -> s in 0.0..300.0 } }
-                leaf = leaf.copy(speedKmh = speed)
-                updateDistance(null, speed, System.currentTimeMillis())
-                elm.setRxAddr(lbcRxAddr)
-                status.add("fast mode: pack A/V, cells, speed")
-                cycle++
-                raw = captured
-                debug = status
-                publish(connected = true)
-                Thread.sleep(100)
-                continue
-            }
             // slow groups every 10th cycle, but 2161 every cycle until its SOH is
             // in (after a reconnect the first reads can fail and the Ah/66
             // estimate would show for ~45 s otherwise)

@@ -63,17 +63,9 @@ one row per window, legend on top):
   Log_LeafDash_YYMMDD_HHmmss.csv`), **Send log** (hands the running or
   latest file to Telegram if installed, else the share sheet) and "Export
   data log CSV" (merges all sessions into one file).
-- **Power test** (Settings -> Power test): guided full-throttle step to
-  measure the pack's DC internal resistance. Hold a steady 30-60 A cruise
-  (~60 km/h), a 10 s countdown runs, then "floor it" and "release" at the
-  first sample >= 250 A; R = dV/dI between the cruise and peak samples
-  (pack mOhm and per cell). Verdicts: regen between cruise and step = run
-  void; more than one intermediate sample = pedal not pressed abruptly;
-  fewer than 4 cruise samples = too little time before the step; peak
-  below 270 A = not floored. An OK run also names the cell with the
-  biggest cruise-to-peak drop and the lowest cell at the peak. While the
-  screen is open the poller reads only pack A/V, all 96 cells and speed
-  (~1.5 s samples), so the data log keeps full cell data during the test.
+- **Tire pressure** (Settings): FL/FR/RR/RL in PSI and bar from the TPMS
+  broadcast `0x385`, refreshed every 5th poll cycle. The full-throttle
+  step test moved to the separate Leaf Battery Test app.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
