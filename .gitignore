@@ -22,3 +22,6 @@ keystore.properties
 
 # streamed diagnostic logs from the app (tools/log_server.py)
 /logs/
+
+# app exports pasted into the repo root by mistake
+/leafdash-*.csv

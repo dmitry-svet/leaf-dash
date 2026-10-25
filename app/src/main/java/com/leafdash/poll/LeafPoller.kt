@@ -227,7 +227,7 @@ class LeafPoller(
                         "${odoDisplayKm ?: ""},${speed ?: ""},${sf?.u(6) ?: ""}," +
                         "${"%.3f".format(sessionDist)},${distanceKm?.let { "%.3f".format(it) } ?: ""}," +
                         "${leaf.socPercent ?: ""},${leaf.gids ?: ""},${leaf.ahCapacity ?: ""}," +
-                        "${leaf.packVolts ?: ""},${leaf.packAmps ?: ""},${leaf.kwhRemaining ?: ""}," +
+                        "${leaf.packVolts ?: ""},${leaf.packAmps ?: ""},${leaf.kwhFromSoc ?: ""}," +
                         "${leaf.batteryTempsC.firstOrNull() ?: ""}," +
                         "${leaf.cellMinV ?: ""},${leaf.cellMaxV ?: ""}," +
                         // raw replies for decodes not yet verified on the car

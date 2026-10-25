@@ -216,6 +216,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun resetTrip() = tracker?.resetTrip()
 
     private fun logTripSample(ps: DashState, distKm: Double, session: Int) {
+        logDataRow(ps)     // every cycle, even when the trip log skips this one
         val logger = tripLogger ?: return
         val leaf = ps.leaf
         val kwh = leaf.kwhFromSoc ?: return
@@ -242,7 +243,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch(tripLogIo) { tripLogStore.append(finished) }
         }
         if (finished != null || ++tripSamples % 10 == 0) saveCurrentTrip()
-        logDataRow(ps)
     }
 
     private fun logDataRow(ps: DashState) {

@@ -84,7 +84,8 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
 
     fun resetTrip() = trip.reset()
 
-    fun onSample(kwhRemaining: Double?, cumKm: Double, soc: Double?, speedKmh: Double? = null) {
+    /** [kwh] must come from one estimator only (SOC-based, `LeafState.kwhFromSoc`). */
+    fun onSample(kwh: Double?, cumKm: Double, soc: Double?, speedKmh: Double? = null) {
         val pOdo = prevOdo
         val pKwh = prevKwh
         if (pOdo == null) {
@@ -96,8 +97,8 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                 badOdoStreak = 0
                 for (w in windows) w.km += dKm
                 val moving = speedKmh != null && speedKmh >= MOVE_SPEED
-                if (pKwh != null && kwhRemaining != null) {
-                    val dKwh = pKwh - kwhRemaining
+                if (pKwh != null && kwh != null) {
+                    val dKwh = pKwh - kwh
                     if (abs(dKwh) < MAX_KWH_STEP) {
                         // moving: net drain incl. regen. Stationary: only positive
                         // drain (heater/AC is real spend); a rise while parked is
@@ -121,7 +122,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
                 badOdoStreak = 0
             }
         }
-        if (kwhRemaining != null) prevKwh = kwhRemaining
+        if (kwh != null) prevKwh = kwh
 
         // charge detection: SOC rising well above its trough means a charge
         if (soc != null) {

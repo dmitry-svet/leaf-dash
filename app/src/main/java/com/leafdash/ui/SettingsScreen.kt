@@ -84,7 +84,7 @@ fun SettingsScreen(
                 }
             }
         }
-        Text("From the car's TPMS (CAN 0x385), refreshed every ~25 s while connected.", style = MaterialTheme.typography.bodySmall)
+        Text("From the car's TPMS (CAN 0x385), read every 5th poll cycle (~25 s) on a live connection.", style = MaterialTheme.typography.bodySmall)
 
         Row(
             Modifier.fillMaxWidth(),
