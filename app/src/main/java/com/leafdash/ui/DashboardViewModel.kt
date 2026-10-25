@@ -179,7 +179,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 p.state.collect { ps ->
                     if (ps.connected) lastActiveMs = System.currentTimeMillis()
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
-                        t.onSample(ps.leaf.kwhRemaining, km, ps.leaf.socPercent, ps.leaf.speedKmh)
+                        t.onSample(ps.leaf.kwhFromSoc, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
                         logTripSample(ps, km, session)
                     }
@@ -218,7 +218,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private fun logTripSample(ps: DashState, distKm: Double, session: Int) {
         val logger = tripLogger ?: return
         val leaf = ps.leaf
-        val kwh = leaf.kwhRemaining ?: return
+        val kwh = leaf.kwhFromSoc ?: return
         val finished = logger.onSample(
             TripSample(
                 tMs = System.currentTimeMillis(),

@@ -61,12 +61,18 @@ data class LeafState(
      * sags under load and would inject phantom consumption into economy.
      */
     val kwhRemaining: Double?
-        get() = when {
-            socPercent != null && ahCapacity != null ->
-                socPercent / 100.0 * ahCapacity * NOMINAL_V / 1000.0
-            gids != null -> gids * GID_WH / 1000.0
-            else -> null
-        }
+        get() = kwhFromSoc ?: gids?.let { it * GID_WH / 1000.0 }
+
+    /**
+     * SOC-based kWh only, for energy accounting (economy windows, trip log).
+     * The gids fallback reads ~1 kWh lower than this on the same car, so a
+     * sum of per-sample deltas that switched between the two (SOC arrives a
+     * few cycles after gids on every reconnect) gained a phantom kWh each
+     * time - trips logged as negative energy.
+     */
+    val kwhFromSoc: Double?
+        get() = if (socPercent != null && ahCapacity != null)
+            socPercent / 100.0 * ahCapacity * NOMINAL_V / 1000.0 else null
 
     /** gids: broadcast value if present, else derived from kWh remaining. */
     val gidsValue: Int?

@@ -68,22 +68,23 @@ fun SettingsScreen(
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text("Trip log")
         }
-        Text("Tire pressure", style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for ((i, label) in listOf("FL", "FR", "RR", "RL").withIndex()) {
-                val psi = tiresPsi.getOrNull(i)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(label, style = MaterialTheme.typography.labelSmall)
+        Text("Tire pressure, bar", style = MaterialTheme.typography.titleMedium)
+        // poller order: FL, FR, RR, RL
+        for ((rowLabel, idx) in listOf("Front" to listOf(0, 1), "Rear" to listOf(3, 2))) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(rowLabel, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                for (i in idx) {
+                    val psi = tiresPsi.getOrNull(i)
                     Text(
-                        if (psi == null) "--" else "%.1f".format(psi),
+                        if (psi == null) "--" else "%.2f".format(psi * 0.0689476),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
                     )
-                    Text(if (psi == null) "" else "%.2f bar".format(psi * 0.0689476), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
-        Text("PSI from the car's TPMS (CAN 0x385), refreshed every ~25 s while connected.", style = MaterialTheme.typography.bodySmall)
+        Text("From the car's TPMS (CAN 0x385), refreshed every ~25 s while connected.", style = MaterialTheme.typography.bodySmall)
 
         Row(
             Modifier.fillMaxWidth(),

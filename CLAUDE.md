@@ -39,6 +39,11 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
   re-anchors.
 - `TripTracker` mirrors that: a single out-of-range odo delta keeps the
   baseline (transient corruption); 2 in a row rebaselines without counting.
+- Energy deltas (economy windows, trip log) come from `LeafState.kwhFromSoc`
+  (SOC x Ah x 360 V) only. `kwhRemaining` falls back to gids x 77.5 for
+  display, which reads ~1 kWh lower on this car; mixing the two in a delta
+  sum added a phantom kWh per reconnect (trips with negative energy,
+  v0.80-0.86).
 - Energy: moving = net drain incl. regen; stationary = positive drain only
   (idle heater/AC counts, charging never goes negative). EMA efficiency
   (`avgKwhPer100`) is fed only by moving samples, clamped 5–60.

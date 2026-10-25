@@ -63,7 +63,7 @@ one row per window, legend on top):
   Log_LeafDash_YYMMDD_HHmmss.csv`), **Send log** (hands the running or
   latest file to Telegram if installed, else the share sheet) and "Export
   data log CSV" (merges all sessions into one file).
-- **Tire pressure** (Settings): FL/FR/RR/RL in PSI and bar from the TPMS
+- **Tire pressure** (Settings): front and rear pairs in bar from the TPMS
   broadcast `0x385`, refreshed every 5th poll cycle. The full-throttle
   step test moved to the separate Leaf Battery Test app.
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
@@ -166,7 +166,10 @@ the LBC's own figure, which group 1 no longer overwrites; polled every cycle unt
 pack current (signed / 1024 A, raw sign flipped so + = discharge); `2106` =
 balancing shunts (nibble per byte, OVMS order, unverified: raw reply
 logged). Gids `0x5B3` is broadcast only while the car is in READY/driving
-(zero while parked, which is when LeafSpy shows 0 too).
+(zero while parked, which is when LeafSpy shows 0 too). Gids only feed the
+display fallback for kWh remaining: economy and trip energy use the
+SOC-based kWh alone, because the two estimates differ by ~1 kWh and a
+delta sum that switches between them drifts.
 
 Active ISO-TP polling of the LBC (`GroupDecoder`, request `0x79B` / reply
 `0x7BB`, groups `2101`–`2106`, verified against a real AZE0): kWh remaining,
