@@ -25,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -203,6 +205,9 @@ private fun EnergyEconomy(
     val refEff = state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 }
         ?: state.avgKwhPer100
     val kwhRemaining = usableKwh(state)
+    // tap the efficiency column to flip kWh/100 km <-> km/kWh
+    var perKwh by rememberSaveable { mutableStateOf(false) }
+    val flip = { perKwh = !perKwh }
     if (compact) {
         // landscape: one table card, window name in the first column, metric
         // legend once on top — all 4 windows fit the screen
@@ -213,19 +218,19 @@ private fun EnergyEconomy(
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Spacer(Modifier.weight(1.5f))
-                    for (label in listOf("km", "kWh", "kWh/100", "range km")) {
+                    for (label in listOf("km", "kWh", effLabel(perKwh), "range km")) {
                         Text(
                             label,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).clickable(onClick = flip),
                         )
                     }
                 }
-                TripRow("Lifetime", state.lifetime, kwhRemaining, refEff, kmDigits = 0, kwhDigits = 0)
-                TripRow("Since last charge", state.lastCharge, kwhRemaining, refEff)
-                TripRow("Since car on", state.carOn, kwhRemaining, refEff)
-                TripRow("Trip", state.trip, kwhRemaining, refEff, onReset = onResetTrip)
+                TripRow("Lifetime", state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
+                TripRow("Since last charge", state.lastCharge, kwhRemaining, refEff, perKwh, flip)
+                TripRow("Since car on", state.carOn, kwhRemaining, refEff, perKwh, flip)
+                TripRow("Trip", state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
             }
         }
     } else {
@@ -235,10 +240,10 @@ private fun EnergyEconomy(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            TripCard("Lifetime", state.lifetime, kwhRemaining, refEff, kmDigits = 0, kwhDigits = 0)
-            TripCard("Since last charge", state.lastCharge, kwhRemaining, refEff)
-            TripCard("Since car on", state.carOn, kwhRemaining, refEff)
-            TripCard("Trip", state.trip, kwhRemaining, refEff, onReset = onResetTrip)
+            TripCard("Lifetime", state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
+            TripCard("Since last charge", state.lastCharge, kwhRemaining, refEff, perKwh, flip)
+            TripCard("Since car on", state.carOn, kwhRemaining, refEff, perKwh, flip)
+            TripCard("Trip", state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
         }
     }
 }
@@ -250,6 +255,8 @@ private fun TripRow(
     w: TripWindow,
     kwhRemaining: Double?,
     refEff: Double,
+    perKwh: Boolean,
+    onFlipEff: () -> Unit,
     onReset: (() -> Unit)? = null,
     kmDigits: Int = 1,
     kwhDigits: Int = 2,
@@ -279,7 +286,7 @@ private fun TripRow(
         }
         FitText(fmt(w.km, kmDigits), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
         FitText(fmt(w.kwh, kwhDigits), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
-        FitText(if (w.km >= 1.0) fmt(eff, 1) else "--", MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
+        FitText(effText(w, eff, perKwh), MaterialTheme.typography.headlineMedium, Modifier.weight(1f).clickable(onClick = onFlipEff))
         FitText(fmt(range, 0), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
     }
 }
@@ -355,6 +362,8 @@ private fun TripCard(
     w: TripWindow,
     kwhRemaining: Double?,
     refEff: Double,
+    perKwh: Boolean,
+    onFlipEff: () -> Unit,
     onReset: (() -> Unit)? = null,
     kmDigits: Int = 1,
     kwhDigits: Int = 2,
@@ -381,7 +390,7 @@ private fun TripCard(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Metric("km", fmt(w.km, kmDigits), Modifier.weight(1f))
                 Metric("kWh", fmt(w.kwh, kwhDigits), Modifier.weight(1f))
-                Metric("kWh/100", if (w.km >= 1.0) fmt(eff, 1) else "--", Modifier.weight(1f))
+                Metric(effLabel(perKwh), effText(w, eff, perKwh), Modifier.weight(1f).clickable(onClick = onFlipEff))
                 Metric("range km", fmt(range, 0), Modifier.weight(1f))
             }
         }
@@ -405,6 +414,11 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 // user's reserve setting, for the tile and range predictions
 private fun usableKwh(state: DashState): Double? =
     state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
+
+private fun effLabel(perKwh: Boolean) = if (perKwh) "km/kWh" else "kWh/100"
+
+private fun effText(w: TripWindow, eff: Double, perKwh: Boolean): String =
+    if (w.km < 1.0) "--" else if (perKwh) (if (eff > 0) fmt(100.0 / eff, 2) else "--") else fmt(eff, 1)
 
 private fun tripEffRange(w: TripWindow, kwhRemaining: Double?, refEff: Double): Pair<Double, Double?> {
     val eff = w.kwhPer100?.takeIf { w.km >= 1.0 && it > 0 } ?: refEff

@@ -14,8 +14,8 @@ one row per window, legend on top):
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **Energy economy — 4 windows** shown together: lifetime, since last charge,
-  since car on, and a resettable trip. Each shows km, kWh, kWh/100 km, and a
-  range prediction. All windows count **app-connected distance only**
+  since car on, and a resettable trip. Each shows km, kWh, kWh/100 km (tap the
+  column to flip it to km/kWh, all windows at once), and a range prediction. All windows count **app-connected distance only**
   (per-session odometer deltas; driving without the app is never counted).
   Range prediction is hidden (`--`) until a window has its first km, then uses
   that window's own measured efficiency (clamped 5–60 kWh/100), applied to
