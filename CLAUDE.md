@@ -34,7 +34,8 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
   string. CSV headers and poller/error messages stay English.
 - `stats/` uses `java.time` on minSdk 23 via core library desugaring
   (`isCoreLibraryDesugaringEnabled`, `desugar_jdk_libs`). The L8 step makes
-  the release build several minutes longer on this machine.
+  first release build after enabling it ~25 min (everything re-dexed); later
+  builds are back to ~2 min (L8 output cached in app/build).
 - `TripStore` has a schema version: bump it only when persisted
   `TripSnapshot` fields change shape/meaning (wipes stored trips on update).
 - Update README.md feature/CAN-map sections in the same commit as behavior

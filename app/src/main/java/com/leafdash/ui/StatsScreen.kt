@@ -2,6 +2,7 @@ package com.leafdash.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,7 +42,8 @@ import java.time.ZoneId
 
 /**
  * Trip-log statistics: totals and a bar chart per day for the last week and
- * month, per week for the last year. Tap a chart to flip km <-> kWh.
+ * month, per week for the last year. Tap a chart to flip km <-> kWh. Swipe
+ * right to go back. Chart height follows the screen so all three cards fit.
  */
 @Composable
 fun StatsScreen(trips: List<TripRecord>, onBack: () -> Unit) {
@@ -48,37 +53,54 @@ fun StatsScreen(trips: List<TripRecord>, onBack: () -> Unit) {
     val week = remember(trips, today) { Stats.week(trips, today, zone) }
     val month = remember(trips, today) { Stats.month(trips, today, zone) }
     val year = remember(trips, today) { Stats.year(trips, today, zone) }
+    // everything but the bars is fixed-height (~470 dp for header, 3 card
+    // chromes, paddings); the rest is split between the three charts
+    val chartH = ((LocalConfiguration.current.screenHeightDp - 470) / 3).dp.coerceIn(40.dp, 110.dp)
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                val threshold = 120.dp.toPx()
+                var dx = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { dx = 0f },
+                    onDragEnd = { if (dx > threshold) onBack() },
+                ) { _, delta -> dx += delta }
+            }
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
             Text(t("Statistics", "Статистика"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                t("tap chart: km / kWh", "тап по графіку: км / кВт·год"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End,
+            )
         }
-        PeriodCard(t("Last 7 days", "Останні 7 днів"), week, showKwh, labelEvery = 1) { showKwh = !showKwh }
-        PeriodCard(t("Last 30 days", "Останні 30 днів"), month, showKwh, labelEvery = 5) { showKwh = !showKwh }
-        PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, showKwh, labelEvery = 8) { showKwh = !showKwh }
-        Text(
-            t("Tap a chart to switch km / kWh. App-connected trips only.",
-              "Тисни на графік, щоб перемкнути км / кВт·год. Лише поїздки з підключеною апкою."),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        PeriodCard(t("Last 7 days", "Останні 7 днів"), week, showKwh, labelEvery = 1, chartH) { showKwh = !showKwh }
+        PeriodCard(t("Last 30 days", "Останні 30 днів"), month, showKwh, labelEvery = 5, chartH) { showKwh = !showKwh }
+        PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, showKwh, labelEvery = 8, chartH) { showKwh = !showKwh }
     }
 }
 
 @Composable
-private fun PeriodCard(title: String, p: Period, showKwh: Boolean, labelEvery: Int, onFlip: () -> Unit) {
+private fun PeriodCard(title: String, p: Period, showKwh: Boolean, labelEvery: Int, chartH: Dp, onFlip: () -> Unit) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
                 Total(t("km", "км"), "%.0f".format(p.totalKm), Modifier.weight(1f))
                 Total(t("kWh", "кВт·г"), "%.1f".format(p.totalWh / 1000.0), Modifier.weight(1f))
                 Total(t("Wh/km", "Вт·г/км"), p.whPerKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
                 Total(t("trips", "поїздок"), p.trips.toString(), Modifier.weight(1f))
             }
-            BarChart(p.buckets, showKwh, labelEvery, Modifier.fillMaxWidth().clickable(onClick = onFlip))
+            BarChart(p.buckets, showKwh, labelEvery, chartH, Modifier.fillMaxWidth().clickable(onClick = onFlip))
         }
     }
 }
@@ -87,13 +109,13 @@ private fun PeriodCard(title: String, p: Period, showKwh: Boolean, labelEvery: I
 private fun Total(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
 /** Thin rounded bars from a common baseline; x labels under every [labelEvery]th bucket. */
 @Composable
-private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, modifier: Modifier = Modifier) {
+private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, chartH: Dp, modifier: Modifier = Modifier) {
     val values = buckets.map { if (showKwh) it.wh / 1000.0 else it.km }
     val max = values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
     val unit = if (showKwh) t("kWh", "кВт·г") else t("km", "км")
@@ -105,7 +127,7 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, m
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Canvas(Modifier.fillMaxWidth().height(110.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(chartH)) {
             val n = values.size
             val gap = 2.dp.toPx()
             val slot = size.width / n
