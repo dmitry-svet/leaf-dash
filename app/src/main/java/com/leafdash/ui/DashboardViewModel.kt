@@ -12,6 +12,7 @@ import com.leafdash.trip.TripRecord
 import com.leafdash.trip.TripSample
 import com.leafdash.trip.TripStore
 import com.leafdash.trip.TripTracker
+import com.leafdash.update.UpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,12 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _logUrl = MutableStateFlow(com.leafdash.log.LogStreamer.DEFAULT_URL)
     val logUrl: StateFlow<String> = _logUrl.asStateFlow()
+
+    /** Result of the GitHub tag check: [UpdateState.newer] = version to offer. */
+    data class UpdateState(val checked: Boolean = false, val newer: String? = null)
+
+    private val _update = MutableStateFlow(UpdateState())
+    val update: StateFlow<UpdateState> = _update.asStateFlow()
 
     private val _streamEnabled = MutableStateFlow(false)
     val streamEnabled: StateFlow<Boolean> = _streamEnabled.asStateFlow()
@@ -99,6 +106,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _reserveKwh.value = tripStore.loadReserveKwh()
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             Lang.uk = tripStore.loadLangUk()
+        }
+        checkUpdate()
+        viewModelScope.launch {
             _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
             streamer.url = _logUrl.value
         }
@@ -260,6 +270,19 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
      * Start/stop the LeafSpy-format data log; persisted. Each start begins a
      * new file (lazily, with the first row); stop closes the current one.
      */
+    /** Ask GitHub for the newest `vX.Y` tag; offers it when above this build. */
+    fun checkUpdate() {
+        _update.value = UpdateState()
+        viewModelScope.launch {
+            val newest = withContext(Dispatchers.IO) { UpdateCheck.fetchNewest() }
+            val cur = com.leafdash.BuildConfig.VERSION_NAME
+            _update.value = UpdateState(
+                checked = true,
+                newer = newest?.takeIf { UpdateCheck.isNewer(it, than = cur) },
+            )
+        }
+    }
+
     /** UI language; persisted. */
     fun setLangUk(uk: Boolean) {
         Lang.uk = uk

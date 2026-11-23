@@ -24,7 +24,11 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
   prefix, no Co-Authored-By).
 - Release APK of the current version is committed as `release/leafdash.apk`
   (copy `app/build/outputs/apk/release/app-release.apk` there after the
-  build, same commit as the version bump).
+  build, same commit as the version bump). Tag that commit `vX.Y` and push
+  the tag (`git push origin main --tags`): the in-app update check
+  (`update/UpdateCheck.kt`) reads the repo's tags via the public GitHub API
+  and downloads `release/leafdash.apk` at the newest tag. No tag = no
+  update offered.
 - UI strings go through `t(en, uk)` (`ui/Lang.kt`); `Lang.uk` is global
   Compose state persisted by `TripStore`. Add both languages for every new
   string. CSV headers and poller/error messages stay English.

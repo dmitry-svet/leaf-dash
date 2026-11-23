@@ -157,6 +157,7 @@ class MainActivity : ComponentActivity() {
             val streamOn by vm.streamEnabled.collectAsState()
             val reserve by vm.reserveKwh.collectAsState()
             val dataLogOn by vm.dataLogEnabled.collectAsState()
+            val update by vm.update.collectAsState()
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
@@ -175,6 +176,8 @@ class MainActivity : ComponentActivity() {
                 dataLogEnabled = dataLogOn,
                 onSetDataLog = { vm.setDataLog(it) },
                 onSetLang = { vm.setLangUk(it) },
+                update = update,
+                onCheckUpdate = { vm.checkUpdate() },
                 dataLogPath = vm.dataLogPath,
                 onExportDataLog = {
                     val day = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
@@ -186,6 +189,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val diagOn by vm.logEnabled.collectAsState()
+        val update by vm.update.collectAsState()
         DashboardScreen(
             state = state,
             onConnect = ::onConnect,
@@ -194,6 +198,7 @@ class MainActivity : ComponentActivity() {
             onResetTrip = { vm.resetTrip() },
             onOpenSettings = { showSettings = true },
             showDiag = diagOn,
+            updateVersion = update.newer,
         )
 
         if (showPicker && adapter != null) {

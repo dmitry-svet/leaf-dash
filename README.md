@@ -14,6 +14,11 @@ one row per window, legend on top):
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **UI language**: English or Ukrainian, switched in Settings (persisted).
+- **Update check**: on launch the app reads this repo's git tags (public
+  GitHub API, no token) and, when a `vX.Y` tag is above the running version,
+  shows an "Update vX.Y available" line on the dashboard and an Update
+  button in Settings; both open `release/leafdash.apk` at that tag in the
+  browser. Settings also has a manual "Check for updates" button.
 - **Energy economy — 4 windows** shown together: lifetime, since last charge,
   since car on, and a resettable trip. Each shows km, kWh, kWh/100 km (tap the
   column to flip it to km/kWh, all windows at once), and a range prediction. All windows count **app-connected distance only**
@@ -88,7 +93,8 @@ export JAVA_HOME=/path/to/jdk-17
 ```
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`. The signed release build of the
-current version is committed as `release/leafdash.apk`.
+current version is committed as `release/leafdash.apk` and tagged `vX.Y`; the
+in-app update check looks for that tag.
 
 Install on a connected phone (USB debugging on):
 

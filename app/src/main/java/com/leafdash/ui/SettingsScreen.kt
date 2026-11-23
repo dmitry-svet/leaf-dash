@@ -29,10 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.leafdash.BuildConfig
+import com.leafdash.update.UpdateCheck
 
 /**
- * Settings screen: UI language, car odometer units, logs, reserve, tire pressure.
+ * Settings screen: UI language, update check, car odometer units, logs, reserve, tire pressure.
  */
 @Composable
 fun SettingsScreen(
@@ -53,6 +56,8 @@ fun SettingsScreen(
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
     onSetLang: (Boolean) -> Unit,
+    update: DashboardViewModel.UpdateState,
+    onCheckUpdate: () -> Unit,
     dataLogPath: String,
     onExportDataLog: () -> Unit,
     onBack: () -> Unit,
@@ -74,6 +79,32 @@ fun SettingsScreen(
             Text(t("Language", "Мова"), style = MaterialTheme.typography.titleMedium)
             LangDropdown(onSetLang)
         }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(t("Version", "Версія") + " " + BuildConfig.VERSION_NAME, style = MaterialTheme.typography.titleMedium)
+            val newer = update.newer
+            if (newer != null) {
+                val ctx = LocalContext.current
+                OutlinedButton(onClick = { openUrl(ctx, UpdateCheck.apkUrl(newer)) }) {
+                    Text(t("Update to v", "Оновити до v") + newer)
+                }
+            } else {
+                OutlinedButton(onClick = onCheckUpdate) { Text(t("Check for updates", "Перевірити оновлення")) }
+            }
+        }
+        Text(
+            when {
+                update.newer != null -> t("New version on GitHub: v", "Нова версія на GitHub: v") + update.newer +
+                    t(". Opens the APK in the browser; install over this one.", ". Відкриє APK у браузері; встанови поверх цієї.")
+                update.checked -> t("Up to date (GitHub tags of ", "Актуальна версія (теги GitHub ") + UpdateCheck.REPO + ")."
+                else -> t("Checking GitHub...", "Перевіряю GitHub...")
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
 
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text(t("Trip log", "Журнал поїздок"))
@@ -197,6 +228,12 @@ fun SettingsScreen(
             ),
             style = MaterialTheme.typography.bodySmall,
         )
+    }
+}
+
+internal fun openUrl(ctx: android.content.Context, url: String) {
+    runCatching {
+        ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
     }
 }
 

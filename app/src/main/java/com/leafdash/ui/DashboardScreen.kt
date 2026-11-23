@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.leafdash.BuildConfig
 import com.leafdash.poll.DashState
 import com.leafdash.trip.TripWindow
+import com.leafdash.update.UpdateCheck
 
 @Composable
 fun DashboardScreen(
@@ -50,6 +52,7 @@ fun DashboardScreen(
     onResetTrip: () -> Unit,
     onOpenSettings: () -> Unit,
     showDiag: Boolean = false,
+    updateVersion: String? = null,
 ) {
     Column(
         Modifier
@@ -97,6 +100,16 @@ fun DashboardScreen(
         }
         if (state.connecting && state.connectMsg != null) {
             Text(state.connectMsg, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (updateVersion != null) {
+            val ctx = LocalContext.current
+            Text(
+                t("Update v", "Оновлення v") + updateVersion + t(" available · tap to download", " доступне · тисни, щоб завантажити"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { openUrl(ctx, UpdateCheck.apkUrl(updateVersion)) },
+            )
         }
         // live tiles + energy economy: side by side in landscape, stacked in
         // portrait
