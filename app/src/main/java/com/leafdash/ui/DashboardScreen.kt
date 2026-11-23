@@ -2,6 +2,8 @@ package com.leafdash.ui
 
 import android.content.res.Configuration
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -51,12 +53,22 @@ fun DashboardScreen(
     onDisconnect: () -> Unit,
     onResetTrip: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenStats: () -> Unit = {},
     showDiag: Boolean = false,
     updateVersion: String? = null,
 ) {
     Column(
         Modifier
             .fillMaxSize()
+            // swipe left anywhere on the dashboard opens the statistics screen
+            .pointerInput(Unit) {
+                val threshold = 120.dp.toPx()
+                var dx = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { dx = 0f },
+                    onDragEnd = { if (dx < -threshold) onOpenStats() },
+                ) { _, delta -> dx += delta }
+            }
             .verticalScroll(rememberScrollState())
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),

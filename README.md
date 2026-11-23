@@ -14,6 +14,10 @@ one row per window, legend on top):
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **UI language**: English or Ukrainian, switched in Settings (persisted).
+- **Statistics screen** (swipe left on the dashboard, or Settings →
+  Statistics): totals (km, kWh, Wh/km, trips) and a bar chart for the last
+  7 days and 30 days (per day) and the last 52 weeks (per Monday-based
+  week), from the trip log. Tap a chart to flip km / kWh.
 - **Update check**: on launch the app reads this repo's git tags (public
   GitHub API, no token) and, when a `vX.Y` tag is above the running version,
   shows an "Update vX.Y available" line on the dashboard and an Update

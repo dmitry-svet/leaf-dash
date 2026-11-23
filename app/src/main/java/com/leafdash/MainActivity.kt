@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
         // saveable: survive the activity recreation of a screen rotation
         var showSettings by rememberSaveable { mutableStateOf(false) }
         var showTripLog by rememberSaveable { mutableStateOf(false) }
+        var showStats by rememberSaveable { mutableStateOf(false) }
 
         // keep the screen awake while a session is connected (driving dashboard)
         val activity = context as? android.app.Activity
@@ -137,6 +138,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        if (showStats) {
+            val trips by vm.trips.collectAsState()
+            BackHandler { showStats = false }
+            com.leafdash.ui.StatsScreen(trips = trips, onBack = { showStats = false })
+            return
+        }
+
         if (showTripLog) {
             val trips by vm.trips.collectAsState()
             BackHandler { showTripLog = false }
@@ -171,6 +179,7 @@ class MainActivity : ComponentActivity() {
                 reserveKwh = reserve,
                 onSetReserve = { vm.setReserve(it) },
                 onOpenTripLog = { showTripLog = true },
+                onOpenStats = { showStats = true },
                 tiresPsi = state.leaf.tiresPsi,
                 onSendDataLog = { sendDataLog() },
                 dataLogEnabled = dataLogOn,
@@ -197,6 +206,7 @@ class MainActivity : ComponentActivity() {
             onDisconnect = { vm.disconnect() },
             onResetTrip = { vm.resetTrip() },
             onOpenSettings = { showSettings = true },
+            onOpenStats = { showStats = true },
             showDiag = diagOn,
             updateVersion = update.newer,
         )

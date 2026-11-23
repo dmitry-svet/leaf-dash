@@ -19,8 +19,8 @@ android {
         applicationId = "com.svet.leafdash"
         minSdk = 23
         targetSdk = 34
-        versionCode = 92
-        versionName = "0.92"
+        versionCode = 93
+        versionName = "0.93"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -51,6 +51,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true   // java.time on minSdk 23 (stats/)
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -68,6 +69,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)
 
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")

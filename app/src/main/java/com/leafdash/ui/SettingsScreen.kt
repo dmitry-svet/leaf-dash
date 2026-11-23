@@ -51,6 +51,7 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
+    onOpenStats: () -> Unit,
     tiresPsi: List<Double?>,
     onSendDataLog: () -> Unit,
     dataLogEnabled: Boolean,
@@ -106,6 +107,9 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall,
         )
 
+        OutlinedButton(onClick = onOpenStats, modifier = Modifier.fillMaxWidth()) {
+            Text(t("Statistics", "Статистика"))
+        }
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text(t("Trip log", "Журнал поїздок"))
         }

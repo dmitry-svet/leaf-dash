@@ -15,7 +15,7 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
 
 ## Conventions
 
-- TDD for all pure logic (`trip/`, `can/`, `poll/`, `obd/`): failing test
+- TDD for all pure logic (`trip/`, `can/`, `poll/`, `obd/`, `stats/`, `update/`): failing test
   first. UI/BT (Compose, `BtSppTransport`, ViewModel) has no test infra —
   change carefully, keep logic out of it where possible.
 - Every user-visible change: bump `versionCode`/`versionName` in
@@ -32,6 +32,9 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
 - UI strings go through `t(en, uk)` (`ui/Lang.kt`); `Lang.uk` is global
   Compose state persisted by `TripStore`. Add both languages for every new
   string. CSV headers and poller/error messages stay English.
+- `stats/` uses `java.time` on minSdk 23 via core library desugaring
+  (`isCoreLibraryDesugaringEnabled`, `desugar_jdk_libs`). The L8 step makes
+  the release build several minutes longer on this machine.
 - `TripStore` has a schema version: bump it only when persisted
   `TripSnapshot` fields change shape/meaning (wipes stored trips on update).
 - Update README.md feature/CAN-map sections in the same commit as behavior
