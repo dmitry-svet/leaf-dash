@@ -187,8 +187,8 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             Tile(t("Odo km", "Пробіг км"), state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile(t("Bat temp", "Темп. батареї"), tempStr, Modifier.weight(1.4f))
-            Tile(t("Ext temp", "Зовн. темп."), fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
+            Tile(t("Bat temp", "Батарея"), tempStr, Modifier.weight(1.4f))
+            Tile(t("Ext temp", "Зовні"), fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
             Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
         }
         Row(
@@ -330,7 +330,7 @@ private fun FitText(
 private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Card(modifier) {
         Column(Modifier.padding(10.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             FitText(
                 value,
                 style = if (big) MaterialTheme.typography.headlineLarge
