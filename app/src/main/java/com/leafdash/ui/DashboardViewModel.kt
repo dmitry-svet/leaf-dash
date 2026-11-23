@@ -98,6 +98,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _streamEnabled.value = tripStore.loadStreamEnabled()
             _reserveKwh.value = tripStore.loadReserveKwh()
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
+            Lang.uk = tripStore.loadLangUk()
             _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
             streamer.url = _logUrl.value
         }
@@ -259,6 +260,12 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
      * Start/stop the LeafSpy-format data log; persisted. Each start begins a
      * new file (lazily, with the first row); stop closes the current one.
      */
+    /** UI language; persisted. */
+    fun setLangUk(uk: Boolean) {
+        Lang.uk = uk
+        viewModelScope.launch { tripStore.saveLangUk(uk) }
+    }
+
     fun setDataLog(on: Boolean) {
         _dataLogEnabled.value = on
         if (!on) dataLogStore.stop()

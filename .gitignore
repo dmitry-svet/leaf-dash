@@ -14,6 +14,8 @@
 
 # LeafSpy APK - copyrighted commercial app (reverse-engineering source), do not publish
 *.apk
+# ...except the app's own release build, committed per version
+!/release/leafdash.apk
 
 # signing secrets - never commit
 keystore.properties

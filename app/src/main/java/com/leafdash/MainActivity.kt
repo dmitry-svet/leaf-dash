@@ -1,6 +1,7 @@
 package com.leafdash
 
 import android.Manifest
+import com.leafdash.ui.t
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -117,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 runCatching {
                     context.contentResolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
                 }.onFailure {
-                    android.widget.Toast.makeText(context, "Export failed: ${it.message}", android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(context, t("Export failed: ", "Експорт не вдався: ") + it.message, android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -131,7 +132,7 @@ class MainActivity : ComponentActivity() {
                     }.exceptionOrNull()
                 }
                 if (err != null) {
-                    android.widget.Toast.makeText(context, "Export failed: ${err.message}", android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(context, t("Export failed: ", "Експорт не вдався: ") + err.message, android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -173,6 +174,7 @@ class MainActivity : ComponentActivity() {
                 onSendDataLog = { sendDataLog() },
                 dataLogEnabled = dataLogOn,
                 onSetDataLog = { vm.setDataLog(it) },
+                onSetLang = { vm.setLangUk(it) },
                 dataLogPath = vm.dataLogPath,
                 onExportDataLog = {
                     val day = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
@@ -216,12 +218,13 @@ class MainActivity : ComponentActivity() {
         AlertDialog(
             onDismissRequest = onDismiss,
             confirmButton = {},
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-            title = { Text("Paired devices") },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel", "Скасувати")) } },
+            title = { Text(t("Paired devices", "Спарені пристрої")) },
             text = {
                 Column {
                     if (devices.isEmpty()) {
-                        Text("No paired devices. Pair the ELM327 in Android Bluetooth settings first.")
+                        Text(t("No paired devices. Pair the ELM327 in Android Bluetooth settings first.",
+                            "Немає спарених пристроїв. Спочатку спаруйте ELM327 у Bluetooth-налаштуваннях Android."))
                     }
                     devices.forEach { dev ->
                         Text(
@@ -241,7 +244,7 @@ class MainActivity : ComponentActivity() {
     private fun sendDataLog() {
         val file = vm.latestDataLogFile()
         if (file == null || !file.exists()) {
-            android.widget.Toast.makeText(this, "No data log yet", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, t("No data log yet", "Логу даних ще немає"), android.widget.Toast.LENGTH_SHORT).show()
             return
         }
         val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
@@ -254,8 +257,8 @@ class MainActivity : ComponentActivity() {
         val telegram = listOf("org.telegram.messenger", "org.telegram.messenger.web", "org.thunderdog.challegram")
             .firstOrNull { pkg -> runCatching { packageManager.getPackageInfo(pkg, 0) }.isSuccess }
         if (telegram != null) send.setPackage(telegram)
-        runCatching { startActivity(android.content.Intent.createChooser(send, "Send data log")) }
-            .onFailure { android.widget.Toast.makeText(this, "No app to send to", android.widget.Toast.LENGTH_SHORT).show() }
+        runCatching { startActivity(android.content.Intent.createChooser(send, t("Send data log", "Надіслати лог даних"))) }
+            .onFailure { android.widget.Toast.makeText(this, t("No app to send to", "Немає куди надіслати"), android.widget.Toast.LENGTH_SHORT).show() }
     }
 
     // --- permission / device helpers (guarded for API level) ---

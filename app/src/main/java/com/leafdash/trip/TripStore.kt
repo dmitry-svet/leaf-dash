@@ -72,6 +72,12 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[STREAM_ENABLED] = on }
     }
 
+    suspend fun loadLangUk(): Boolean = context.tripDataStore.data.first()[LANG_UK] ?: false
+
+    suspend fun saveLangUk(uk: Boolean) {
+        context.tripDataStore.edit { it[LANG_UK] = uk }
+    }
+
     suspend fun loadLastDevice(): String? = context.tripDataStore.data.first()[LAST_DEVICE]
 
     suspend fun saveLastDevice(address: String) {
@@ -108,6 +114,7 @@ class TripStore(private val context: Context) {
         val RESERVE_KWH = doublePreferencesKey("reserve_kwh")
         val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
+        val LANG_UK = booleanPreferencesKey("lang_uk")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2
         const val DEFAULT_RESERVE_KWH = 2.0

@@ -13,6 +13,7 @@ one row per window, legend on top):
 
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
+- **UI language**: English or Ukrainian, switched in Settings (persisted).
 - **Energy economy — 4 windows** shown together: lifetime, since last charge,
   since car on, and a resettable trip. Each shows km, kWh, kWh/100 km (tap the
   column to flip it to km/kWh, all windows at once), and a range prediction. All windows count **app-connected distance only**
@@ -86,7 +87,8 @@ export JAVA_HOME=/path/to/jdk-17
 ./gradlew :app:assembleDebug testDebugUnitTest
 ```
 
-APK: `app/build/outputs/apk/debug/app-debug.apk`
+APK: `app/build/outputs/apk/debug/app-debug.apk`. The signed release build of the
+current version is committed as `release/leafdash.apk`.
 
 Install on a connected phone (USB debugging on):
 

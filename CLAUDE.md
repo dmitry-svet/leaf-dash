@@ -22,6 +22,12 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
   `app/build.gradle.kts`, rebuild APK after the bump (not before), commit +
   push to origin/main directly (personal repo — no task branches, no BID
   prefix, no Co-Authored-By).
+- Release APK of the current version is committed as `release/leafdash.apk`
+  (copy `app/build/outputs/apk/release/app-release.apk` there after the
+  build, same commit as the version bump).
+- UI strings go through `t(en, uk)` (`ui/Lang.kt`); `Lang.uk` is global
+  Compose state persisted by `TripStore`. Add both languages for every new
+  string. CSV headers and poller/error messages stay English.
 - `TripStore` has a schema version: bump it only when persisted
   `TripSnapshot` fields change shape/meaning (wipes stored trips on update).
 - Update README.md feature/CAN-map sections in the same commit as behavior

@@ -60,10 +60,10 @@ fun DashboardScreen(
     ) {
         // status + controls
         val status = when {
-            state.connecting -> "Connecting..."
-            state.connected -> "Connected"
+            state.connecting -> t("Connecting...", "З'єднання...")
+            state.connected -> t("Connected", "З'єднано")
             state.error != null -> state.error
-            else -> "Disconnected"
+            else -> t("Disconnected", "Відключено")
         }
         val statusColor = when {
             state.connecting -> Color(0xFFB58900)   // amber
@@ -86,10 +86,10 @@ fun DashboardScreen(
             )
             if (state.connecting) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             if (state.connected || state.connecting) {
-                TextButton(onClick = onDisconnect) { Text("Disconnect") }
+                TextButton(onClick = onDisconnect) { Text(t("Disconnect", "Відключити")) }
             } else {
-                Button(onClick = onConnect) { Text("Connect") }
-                TextButton(onClick = onDemo) { Text("Demo") }
+                Button(onClick = onConnect) { Text(t("Connect", "Підключити")) }
+                TextButton(onClick = onDemo) { Text(t("Demo", "Демо")) }
             }
             TextButton(onClick = onOpenSettings) {
                 Text("⋮", style = MaterialTheme.typography.titleLarge)   // vertical ellipsis
@@ -120,7 +120,7 @@ fun DashboardScreen(
         // connection / debug info (only when diagnostics/log is enabled)
         if (showDiag && state.debug.isNotEmpty()) {
             Text(
-                "Debug",
+                t("Debug", "Відладка"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -136,7 +136,7 @@ fun DashboardScreen(
         // diagnostic: raw ISO-TP responses (active mode, for offset mapping)
         if (showDiag && state.raw.isNotEmpty()) {
             Text(
-                "Raw (diagnostic)",
+                t("Raw (diagnostic)", "Сирі дані (діагностика)"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -146,7 +146,7 @@ fun DashboardScreen(
                         Column {
                             Text(group, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                hex.ifBlank { "(no reply)" },
+                                hex.ifBlank { t("(no reply)", "(немає відповіді)") },
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                             )
@@ -171,11 +171,11 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Tile("SOH", fmt(leaf.sohPercent, 1, "%"), Modifier.weight(1f))
             Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f))
-            Tile("Odo km", state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+            Tile(t("Odo km", "Пробіг км"), state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tile("Bat temp", tempStr, Modifier.weight(1.4f))
-            Tile("Ext temp", fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
+            Tile(t("Bat temp", "Темп. батареї"), tempStr, Modifier.weight(1.4f))
+            Tile(t("Ext temp", "Зовн. темп."), fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(0.8f))
             Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(0.8f))
         }
         Row(
@@ -183,7 +183,7 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(0.8f).fillMaxHeight(), big = true)
-            Tile("Usable", fmt(usableKwh(state), 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
+            Tile(t("Usable", "Доступно"), fmt(usableKwh(state), 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), big = true)
             // weakest cell V (tenths) over min-max spread (mV), no legend;
             // red = weakest cell dictates power cut (turtle) / cells diverging
             CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(0.8f).fillMaxHeight())
@@ -218,7 +218,7 @@ private fun EnergyEconomy(
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Spacer(Modifier.weight(1.5f))
-                    for (label in listOf("km", "kWh", effLabel(perKwh), "range km")) {
+                    for (label in listOf(t("km", "км"), t("kWh", "кВт·г"), effLabel(perKwh), t("range km", "запас км"))) {
                         Text(
                             label,
                             style = MaterialTheme.typography.labelSmall,
@@ -227,23 +227,23 @@ private fun EnergyEconomy(
                         )
                     }
                 }
-                TripRow("Lifetime", state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
-                TripRow("Since last charge", state.lastCharge, kwhRemaining, refEff, perKwh, flip)
-                TripRow("Since car on", state.carOn, kwhRemaining, refEff, perKwh, flip)
-                TripRow("Trip", state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
+                TripRow(t("Lifetime", "Загалом"), state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
+                TripRow(t("Since last charge", "З останньої зарядки"), state.lastCharge, kwhRemaining, refEff, perKwh, flip)
+                TripRow(t("Since car on", "З увімкнення"), state.carOn, kwhRemaining, refEff, perKwh, flip)
+                TripRow(t("Trip", "Поїздка"), state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
             }
         }
     } else {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                "Energy economy",
+                t("Energy economy", "Витрата енергії"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            TripCard("Lifetime", state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
-            TripCard("Since last charge", state.lastCharge, kwhRemaining, refEff, perKwh, flip)
-            TripCard("Since car on", state.carOn, kwhRemaining, refEff, perKwh, flip)
-            TripCard("Trip", state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
+            TripCard(t("Lifetime", "Загалом"), state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
+            TripCard(t("Since last charge", "З останньої зарядки"), state.lastCharge, kwhRemaining, refEff, perKwh, flip)
+            TripCard(t("Since car on", "З увімкнення"), state.carOn, kwhRemaining, refEff, perKwh, flip)
+            TripCard(t("Trip", "Поїздка"), state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
         }
     }
 }
@@ -276,7 +276,7 @@ private fun TripRow(
             )
             if (onReset != null) {
                 Text(
-                    "Reset",
+                    t("Reset", "Скинути"),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -379,7 +379,7 @@ private fun TripCard(
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 if (onReset != null) {
                     Text(
-                        "Reset",
+                        t("Reset", "Скинути"),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -388,10 +388,10 @@ private fun TripCard(
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Metric("km", fmt(w.km, kmDigits), Modifier.weight(1f))
-                Metric("kWh", fmt(w.kwh, kwhDigits), Modifier.weight(1f))
+                Metric(t("km", "км"), fmt(w.km, kmDigits), Modifier.weight(1f))
+                Metric(t("kWh", "кВт·г"), fmt(w.kwh, kwhDigits), Modifier.weight(1f))
                 Metric(effLabel(perKwh), effText(w, eff, perKwh), Modifier.weight(1f).clickable(onClick = onFlipEff))
-                Metric("range km", fmt(range, 0), Modifier.weight(1f))
+                Metric(t("range km", "запас км"), fmt(range, 0), Modifier.weight(1f))
             }
         }
     }
@@ -415,7 +415,7 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
 private fun usableKwh(state: DashState): Double? =
     state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
 
-private fun effLabel(perKwh: Boolean) = if (perKwh) "km/kWh" else "kWh/100"
+private fun effLabel(perKwh: Boolean) = if (perKwh) t("km/kWh", "км/кВт·г") else t("kWh/100", "кВт·г/100")
 
 private fun effText(w: TripWindow, eff: Double, perKwh: Boolean): String =
     if (w.km < 1.0) "--" else if (perKwh) (if (eff > 0) fmt(100.0 / eff, 2) else "--") else fmt(eff, 1)

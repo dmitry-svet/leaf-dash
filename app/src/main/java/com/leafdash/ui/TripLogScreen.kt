@@ -55,20 +55,22 @@ fun TripLogScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TextButton(onClick = onBack) { Text("‹ Back") }
+            TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
             Text(
-                "Trip log",
+                t("Trip log", "Журнал поїздок"),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
             )
             RotateButton()
-            Button(onClick = onExport, enabled = trips.isNotEmpty()) { Text("Export CSV") }
+            Button(onClick = onExport, enabled = trips.isNotEmpty()) { Text(t("Export CSV", "Експорт CSV")) }
         }
         if (trips.isEmpty()) {
             Text(
-                "No trips yet. A trip is recorded from car on to car off " +
-                    "(30 min without data ends it).",
+                t(
+                    "No trips yet. A trip is recorded from car on to car off (30 min without data ends it).",
+                    "Поки немає поїздок. Поїздка записується від увімкнення до вимкнення авто (30 хв без даних завершують її).",
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
             return@Column
@@ -78,7 +80,7 @@ fun TripLogScreen(
         // keeps the other columns aligned
         val hScroll = rememberScrollState()
         TableRow(
-            "Date",
+            t("Date", "Дата"),
             TripRecord.HEADER.subList(2, SHOWN),
             hScroll,
             MaterialTheme.colorScheme.secondaryContainer,
