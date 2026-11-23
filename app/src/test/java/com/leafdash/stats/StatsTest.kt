@@ -73,4 +73,14 @@ class StatsTest {
         val y = Stats.year(trips, today, zone)
         assertEquals("23.11", y.buckets.last().label)    // week start (Monday)
     }
+
+    @Test
+    fun gridStepGivesTwoToFiveLines() {
+        assertEquals(20.0, Stats.gridStep(93.0), 0.0)      // 5 lines
+        assertEquals(100.0, Stats.gridStep(413.0), 0.0)    // 5 lines
+        assertEquals(500.0, Stats.gridStep(1054.0), 0.0)   // 3 lines
+        assertEquals(5.0, Stats.gridStep(19.3), 0.0)       // 4 lines
+        assertEquals(0.2, Stats.gridStep(0.8), 1e-9)       // 4 lines
+        assertEquals(1.0, Stats.gridStep(0.0), 0.0)        // empty chart
+    }
 }

@@ -21,6 +21,16 @@ data class Period(val buckets: List<Bucket>, val trips: Int) {
  * local date of their start; windows end today (inclusive).
  */
 object Stats {
+    /**
+     * Horizontal grid step for a chart topping out at [max]: 0.2/0.5/1/2 x 10^k,
+     * the smallest that needs at most 5 lines to cover [max].
+     */
+    fun gridStep(max: Double): Double {
+        if (max <= 0) return 1.0
+        val mag = Math.pow(10.0, Math.floor(Math.log10(max)))
+        return doubleArrayOf(0.2, 0.5, 1.0, 2.0).map { it * mag }.first { Math.ceil(max / it) <= 5 }
+    }
+
     /** Last 7 days, one bucket per day, oldest first. */
     fun week(trips: List<TripRecord>, today: LocalDate, zone: ZoneId) = daily(trips, today, zone, 7)
 
