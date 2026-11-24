@@ -17,7 +17,9 @@ one row per window, legend on top):
 - **Statistics screen** (swipe left on the dashboard, swipe right to return, or Settings →
   Statistics): totals (km, kWh, Wh/km, trips) and a bar chart for the last
   7 days and 30 days (per day) and the last 52 weeks (per Monday-based
-  week), from the trip log, with a labelled y grid. Tap a chart to flip km / kWh.
+  week), from the trip log, with a labelled y grid, weekends (daily charts)
+  and every other month (weekly chart) shaded, and SOH / Hx overlay lines
+  with their max / min for the period on the right. Tap a chart to flip km / kWh.
 - **Update check**: on launch the app reads this repo's git tags (public
   GitHub API, no token) and, when a `vX.Y` tag is above the running version,
   shows an "Update vX.Y available" line on the dashboard and an Update

@@ -30,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
@@ -51,7 +53,8 @@ import java.time.ZoneId
  * Trip-log statistics: totals and a bar chart per day for the last week and
  * month, per week for the last year. Tap a chart to flip km <-> kWh. Swipe
  * right to go back. Chart height follows the screen so all three cards fit;
- * y grid lines at a nice step, labelled on the left (unit on the top one).
+ * y grid lines at a nice step, labelled on the left (unit on the top one);
+ * weekends / even months shaded; SOH and Hx lines with max/min on the right.
  */
 @Composable
 fun StatsScreen(trips: List<TripRecord>, onBack: () -> Unit) {
@@ -126,7 +129,10 @@ private fun Total(label: String, value: String, modifier: Modifier = Modifier) {
  * Thin rounded bars from a common baseline, y grid at [Stats.gridStep] with
  * value labels in a left margin (unit on the top one; every other label is
  * skipped when the chart is too short for all), x labels under every
- * [labelEvery]th bucket.
+ * [labelEvery]th bucket. Shaded buckets get a darker background column.
+ * SOH (upper band) and Hx (lower band) are drawn as lines over the bars, each
+ * stretched over its own min..max; their max/min values sit in a right margin,
+ * pushed apart so they never overlap.
  */
 @Composable
 private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, chartH: Dp, modifier: Modifier = Modifier) {
@@ -142,24 +148,41 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
     }
     val barColor = MaterialTheme.colorScheme.primary
     val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val shadeColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val measurer = rememberTextMeasurer()
     val yLayouts = yLabels.map { measurer.measure(it, labelStyle, softWrap = false) }
-    val axisW = with(LocalDensity.current) { yLayouts.maxOf { it.size.width }.toDp() } + 4.dp
+    val series = listOf(
+        Series("SOH", buckets.map { it.soh }, SOH_COLOR, 0.55f, 0.92f),
+        Series("Hx", buckets.map { it.hx }, HX_COLOR, 0.08f, 0.45f),
+    ).filter { it.points.isNotEmpty() }
+    val rightLayouts = series.flatMap { s ->
+        listOfNotNull(
+            measurer.measure("${s.name} ${"%.1f".format(s.hi)}", labelStyle.copy(color = s.color), softWrap = false),
+            if (s.flat) null else measurer.measure("%.1f".format(s.lo), labelStyle.copy(color = s.color), softWrap = false),
+        )
+    }
+    val density = LocalDensity.current
+    val axisW = with(density) { yLayouts.maxOf { it.size.width }.toDp() } + 4.dp
+    val rightW = if (rightLayouts.isEmpty()) 0.dp else with(density) { rightLayouts.maxOf { it.size.width }.toDp() } + 4.dp
     Column(modifier) {
         Canvas(Modifier.fillMaxWidth().height(chartH)) {
             val x0 = axisW.toPx()
+            val x1 = size.width - rightW.toPx()
             val n = values.size
             val gap = 2.dp.toPx()
-            val slot = (size.width - x0) / n
+            val slot = (x1 - x0) / n
             val w = (slot - gap).coerceAtLeast(1f)
             val r = CornerRadius(minOf(4.dp.toPx(), w / 2))
+            buckets.forEachIndexed { i, b ->
+                if (b.shade) drawRect(shadeColor, Offset(x0 + i * slot, 0f), Size(slot, size.height))
+            }
             val rowH = size.height / lines
             val labelH = yLayouts[0].size.height
             val labelEveryY = Math.ceil(labelH * 1.1 / rowH).toInt().coerceAtLeast(1)
             for (i in 0..lines) {
                 val y = size.height - i * rowH
-                drawLine(gridColor, Offset(x0, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                drawLine(gridColor, Offset(x0, y), Offset(x1, y), strokeWidth = 1.dp.toPx())
                 if (i > 0 && (lines - i) % labelEveryY == 0) {
                     val l = yLayouts[i - 1]
                     drawText(l, topLeft = Offset(x0 - 4.dp.toPx() - l.size.width, (y - l.size.height / 2).coerceAtLeast(0f)))
@@ -170,8 +193,29 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
                 val h = (v / top * size.height).toFloat()
                 drawRoundRect(barColor, Offset(x0 + i * slot + gap / 2, size.height - h), Size(w, h), r)
             }
+            // overlay lines; right labels collected first, then spread apart
+            val labels = mutableListOf<Pair<TextLayoutResult, Float>>()   // layout, desired top
+            var li = 0
+            series.forEach { s ->
+                val pts = s.points.map { (i, v) -> Offset(x0 + i * slot + slot / 2, size.height * (1 - s.frac(v))) }
+                for (k in 1 until pts.size) drawLine(s.color, pts[k - 1], pts[k], strokeWidth = 2.dp.toPx())
+                pts.forEach { drawCircle(s.color, 2.5.dp.toPx(), it) }
+                val hiL = rightLayouts[li++]
+                labels += hiL to size.height * (1 - s.frac(s.hi)) - hiL.size.height / 2
+                if (!s.flat) {
+                    val loL = rightLayouts[li++]
+                    labels += loL to size.height * (1 - s.frac(s.lo)) - loL.size.height / 2
+                }
+            }
+            val ys = labels.map { it.second }.toFloatArray()
+            for (k in 1 until ys.size) ys[k] = maxOf(ys[k], ys[k - 1] + labels[k - 1].first.size.height)
+            for (k in ys.indices.reversed()) {
+                val limit = if (k == ys.lastIndex) size.height - labels[k].first.size.height else ys[k + 1] - labels[k].first.size.height
+                ys[k] = minOf(ys[k], limit)
+            }
+            labels.forEachIndexed { k, (l, _) -> drawText(l, topLeft = Offset(x1 + 4.dp.toPx(), ys[k])) }
         }
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(end = rightW)) {
             Spacer(Modifier.width(axisW))
             buckets.forEachIndexed { i, b ->
                 val last = i == buckets.lastIndex
@@ -187,4 +231,18 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
             }
         }
     }
+}
+
+private val SOH_COLOR = Color(0xFFD9731A)
+private val HX_COLOR = Color(0xFF0F8A8A)
+
+/** An overlay line: non-null [values] stretched over [lo]..[hi] into the band [b0]..[b1] of the chart height. */
+private class Series(val name: String, values: List<Double?>, val color: Color, private val b0: Float, private val b1: Float) {
+    val points: List<Pair<Int, Double>> = values.mapIndexedNotNull { i, v -> v?.let { i to it } }
+    val lo = points.minOfOrNull { it.second } ?: 0.0
+    val hi = points.maxOfOrNull { it.second } ?: 0.0
+    val flat = hi == lo
+
+    /** Fraction of the chart height (0 = baseline) for value [v]. */
+    fun frac(v: Double): Float = if (flat) (b0 + b1) / 2 else b0 + (b1 - b0) * ((v - lo) / (hi - lo)).toFloat()
 }

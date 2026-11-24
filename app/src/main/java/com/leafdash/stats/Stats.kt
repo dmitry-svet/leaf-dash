@@ -7,8 +7,19 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
-/** One bar: a day (week/month views) or a Monday-based week (year view). */
-data class Bucket(val label: String, val km: Double, val wh: Double)
+/**
+ * One bar: a day (week/month views) or a Monday-based week (year view).
+ * [shade] marks weekends (daily) or even months (weekly) for the chart
+ * background; [soh]/[hx] are the newest non-null readings in the bucket.
+ */
+data class Bucket(
+    val label: String,
+    val km: Double,
+    val wh: Double,
+    val shade: Boolean = false,
+    val soh: Double? = null,
+    val hx: Double? = null,
+)
 
 data class Period(val buckets: List<Bucket>, val trips: Int) {
     val totalKm: Double get() = buckets.sumOf { it.km }
@@ -45,7 +56,7 @@ object Stats {
         val byWeek = inRange.groupBy { date(it, zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) }
         val buckets = (0 until 52).map { i ->
             val monday = first.plusWeeks(i.toLong())
-            bucket("%02d.%02d".format(monday.dayOfMonth, monday.monthValue), byWeek[monday])
+            bucket("%02d.%02d".format(monday.dayOfMonth, monday.monthValue), byWeek[monday], monday.monthValue % 2 == 0)
         }
         return Period(buckets, inRange.size)
     }
@@ -56,13 +67,22 @@ object Stats {
         val byDay = inRange.groupBy { date(it, zone) }
         val buckets = (0 until days).map { i ->
             val d = first.plusDays(i.toLong())
-            bucket("%02d".format(d.dayOfMonth), byDay[d])
+            bucket("%02d".format(d.dayOfMonth), byDay[d], d.dayOfWeek == DayOfWeek.SATURDAY || d.dayOfWeek == DayOfWeek.SUNDAY)
         }
         return Period(buckets, inRange.size)
     }
 
-    private fun bucket(label: String, trips: List<TripRecord>?) =
-        Bucket(label, trips?.sumOf { it.distKm } ?: 0.0, trips?.sumOf { it.energyWh } ?: 0.0)
+    private fun bucket(label: String, trips: List<TripRecord>?, shade: Boolean): Bucket {
+        val sorted = trips?.sortedBy { it.startMs }
+        return Bucket(
+            label,
+            trips?.sumOf { it.distKm } ?: 0.0,
+            trips?.sumOf { it.energyWh } ?: 0.0,
+            shade,
+            soh = sorted?.lastOrNull { it.soh != null }?.soh,
+            hx = sorted?.lastOrNull { it.hx != null }?.hx,
+        )
+    }
 
     private fun date(t: TripRecord, zone: ZoneId): LocalDate =
         Instant.ofEpochMilli(t.startMs).atZone(zone).toLocalDate()
