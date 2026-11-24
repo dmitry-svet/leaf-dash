@@ -55,7 +55,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     val logUrl: StateFlow<String> = _logUrl.asStateFlow()
 
     /** Result of the GitHub tag check: [UpdateState.newer] = version to offer. */
-    data class UpdateState(val checked: Boolean = false, val newer: String? = null)
+    /** [failed]: the last GitHub request failed (network, rate limit), so "up to date" is unknown. */
+    data class UpdateState(val checked: Boolean = false, val newer: String? = null, val failed: Boolean = false)
 
     private val _update = MutableStateFlow(UpdateState())
     val update: StateFlow<UpdateState> = _update.asStateFlow()
@@ -111,7 +112,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             Lang.uk = tripStore.loadLangUk()
             _statsView.value = tripStore.loadStatsView()
         }
-        checkUpdate()
         viewModelScope.launch {
             _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
             streamer.url = _logUrl.value
@@ -274,18 +274,40 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
      * Start/stop the LeafSpy-format data log; persisted. Each start begins a
      * new file (lazily, with the first row); stop closes the current one.
      */
-    /** Ask GitHub for the newest `vX.Y` tag; offers it when above this build. */
+    private var updateJob: Job? = null
+
+    /** Ask GitHub for the newest `vX.Y` tag now (Settings button); offers it when above this build. */
     fun checkUpdate() {
+        updateJob?.cancel()
         _update.value = UpdateState()
-        viewModelScope.launch {
-            val newest = withContext(Dispatchers.IO) { UpdateCheck.fetchNewest() }
-            val cur = com.leafdash.BuildConfig.VERSION_NAME
-            _update.value = UpdateState(
-                checked = true,
-                newer = newest?.takeIf { UpdateCheck.isNewer(it, than = cur) },
-            )
+        updateJob = viewModelScope.launch { fetchUpdate() }
+    }
+
+    /**
+     * Automatic check (activity start): asks GitHub at most once a day; in
+     * between, re-offers the newest tag seen by the last successful check.
+     */
+    fun checkUpdateDaily() {
+        if (updateJob?.isActive == true) return
+        updateJob = viewModelScope.launch {
+            val (lastMs, newest) = tripStore.loadUpdateCheck()
+            if (UpdateCheck.due(lastMs, System.currentTimeMillis())) fetchUpdate()
+            else _update.value = UpdateState(checked = true, newer = newerThanThisBuild(newest))
         }
     }
+
+    private suspend fun fetchUpdate() {
+        val newest = withContext(Dispatchers.IO) { UpdateCheck.fetchNewest() }
+        if (newest == null) {
+            _update.value = UpdateState(failed = true)
+            return
+        }
+        tripStore.saveUpdateCheck(System.currentTimeMillis(), newest)
+        _update.value = UpdateState(checked = true, newer = newerThanThisBuild(newest))
+    }
+
+    private fun newerThanThisBuild(newest: String?) =
+        newest?.takeIf { UpdateCheck.isNewer(it, than = com.leafdash.BuildConfig.VERSION_NAME) }
 
     /** Statistics screen toggles; persisted. */
     fun setStatsView(v: com.leafdash.stats.StatsView) {

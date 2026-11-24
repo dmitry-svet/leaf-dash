@@ -56,6 +56,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        vm.checkUpdateDaily()   // the process lives long (BT session), so not only at launch
+    }
+
     @Composable
     private fun App(vm: DashboardViewModel) {
         val state by vm.state.collectAsState()

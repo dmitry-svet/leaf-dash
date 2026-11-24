@@ -18,6 +18,11 @@ object UpdateCheck {
     fun newestVersion(tagsJson: String): String? =
         TAG.findAll(tagsJson).map { it.groupValues[1] }.maxWithOrNull(::compare)
 
+    private const val DAY_MS = 24 * 3600 * 1000L
+
+    /** Automatic check is due a day after the last successful one (or if the clock went back). */
+    fun due(lastMs: Long?, nowMs: Long): Boolean = lastMs == null || nowMs - lastMs >= DAY_MS || nowMs < lastMs
+
     fun isNewer(version: String, than: String): Boolean = compare(version, than) > 0
 
     fun apkUrl(version: String) = "https://github.com/$REPO/raw/v$version/release/leafdash.apk"

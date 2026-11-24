@@ -106,6 +106,7 @@ fun SettingsScreen(
             when {
                 update.newer != null -> t("New version on GitHub: v", "Нова версія на GitHub: v") + update.newer +
                     t(". Opens the APK in the browser; install over this one.", ". Відкриє APK у браузері; встанови поверх цієї.")
+                update.failed -> t("Could not check (GitHub unreachable).", "Не вдалося перевірити (GitHub недоступний).")
                 update.checked -> t("Up to date (GitHub tags of ", "Актуальна версія (теги GitHub ") + UpdateCheck.REPO + ")."
                 else -> t("Checking GitHub...", "Перевіряю GitHub...")
             },

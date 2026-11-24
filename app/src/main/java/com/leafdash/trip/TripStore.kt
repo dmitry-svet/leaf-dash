@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
@@ -100,6 +101,19 @@ class TripStore(private val context: Context) {
         }
     }
 
+    /** Last successful update check: time and the newest tag seen then. */
+    suspend fun loadUpdateCheck(): Pair<Long?, String?> {
+        val p = context.tripDataStore.data.first()
+        return p[UPDATE_CHECKED_MS] to p[UPDATE_NEWEST]
+    }
+
+    suspend fun saveUpdateCheck(ms: Long, newest: String) {
+        context.tripDataStore.edit {
+            it[UPDATE_CHECKED_MS] = ms
+            it[UPDATE_NEWEST] = newest
+        }
+    }
+
     suspend fun loadLastDevice(): String? = context.tripDataStore.data.first()[LAST_DEVICE]
 
     suspend fun saveLastDevice(address: String) {
@@ -137,6 +151,8 @@ class TripStore(private val context: Context) {
         val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val LANG_UK = booleanPreferencesKey("lang_uk")
+        val UPDATE_CHECKED_MS = longPreferencesKey("update_checked_ms")
+        val UPDATE_NEWEST = stringPreferencesKey("update_newest")
         val STATS_BARS_KWH = booleanPreferencesKey("stats_bars_kwh")
         val STATS_PER_KWH = booleanPreferencesKey("stats_per_kwh")
         val STATS_CONSUMPTION = booleanPreferencesKey("stats_consumption")

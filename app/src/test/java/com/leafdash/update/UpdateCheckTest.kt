@@ -18,6 +18,14 @@ class UpdateCheckTest {
         assertEquals("0.100", UpdateCheck.newestVersion(tagsJson))
     }
 
+    @Test fun dailyCheckDueAfterADayOrClockJump() {
+        val day = 24 * 3600 * 1000L
+        assertTrue(UpdateCheck.due(lastMs = null, nowMs = 5 * day))           // never checked
+        assertFalse(UpdateCheck.due(lastMs = 5 * day, nowMs = 6 * day - 1))
+        assertTrue(UpdateCheck.due(lastMs = 5 * day, nowMs = 6 * day))
+        assertTrue(UpdateCheck.due(lastMs = 5 * day, nowMs = 4 * day))       // clock moved back
+    }
+
     @Test fun noTagsGivesNull() {
         assertNull(UpdateCheck.newestVersion("[]"))
         assertNull(UpdateCheck.newestVersion("{\"message\":\"Not Found\"}"))

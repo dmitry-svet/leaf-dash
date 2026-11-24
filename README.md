@@ -19,15 +19,17 @@ one row per window, legend on top):
   7 days and 30 days (per day) and the last 52 weeks (per Monday-based
   week), from the trip log, with a labelled y grid, weekends (daily charts)
   and every other month (weekly chart) shaded, SOH / Hx overlay lines with
-  their max / min for the period on the right, and a consumption line (per
+  their name and max / min for the period on the right, and a consumption line (per
   bucket with >= 1 km) with its max / min on the left. Header toggles flip
   the bars km / kWh and consumption kWh/100 km / km/kWh; checkboxes show or
   hide the consumption, SOH and Hx lines. All of it is remembered.
-- **Update check**: on launch the app reads this repo's git tags (public
-  GitHub API, no token) and, when a `vX.Y` tag is above the running version,
-  shows an "Update vX.Y available" line on the dashboard and an Update
-  button in Settings; both open `release/leafdash.apk` at that tag in the
-  browser. Settings also has a manual "Check for updates" button.
+- **Update check**: once a day (checked whenever the app comes to the
+  foreground) the app reads this repo's git tags (public GitHub API, no
+  token) and, when a `vX.Y` tag is above the running version, shows an
+  "Update vX.Y available" line on the dashboard and an Update button in
+  Settings; both open `release/leafdash.apk` at that tag in the browser.
+  Between checks the last seen tag is remembered. Settings also has a manual
+  "Check for updates" button; a failed request says so instead of "up to date".
 - **Energy economy — 4 windows** shown together: lifetime, since last charge,
   since car on, and a resettable trip. Each shows km, kWh, kWh/100 km (tap the
   column to flip it to km/kWh, all windows at once), and a range prediction. All windows count **app-connected distance only**
