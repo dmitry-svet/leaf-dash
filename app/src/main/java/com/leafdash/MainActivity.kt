@@ -178,7 +178,8 @@ class MainActivity : ComponentActivity() {
         if (showStats) {
             val trips by vm.trips.collectAsState()
             BackHandler { showStats = false }
-            com.leafdash.ui.StatsScreen(trips = trips, onBack = { showStats = false })
+            val statsView by vm.statsView.collectAsState()
+            com.leafdash.ui.StatsScreen(trips = trips, view = statsView, onView = vm::setStatsView, onBack = { showStats = false })
             return
         }
 

@@ -68,6 +68,14 @@ class StatsTest {
         assertEquals(150.0, Stats.week(trips, today, zone).whPerKm!!, 1e-9)
     }
 
+    @Test fun bucketWhPerKmOnlyFromOneKm() {
+        val b = Stats.week(trips + trip(today.minusDays(2), 0.9, 400.0), today, zone).buckets
+        assertEquals(1000.0 / 7.0, b[0].whPerKm!!, 1e-9)   // 7 km, 1000 Wh
+        assertEquals(2300.0 / 15.0, b[6].whPerKm!!, 1e-9)  // two trips summed
+        assertEquals(null, b[4].whPerKm)                   // 0.9 km: idle-heavy, skipped
+        assertEquals(null, b[1].whPerKm)                   // no trips
+    }
+
     @Test fun bucketLabels() {
         val w = Stats.week(trips, today, zone)
         assertEquals("17", w.buckets.first().label)      // day of month

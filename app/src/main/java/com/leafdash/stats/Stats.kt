@@ -19,6 +19,22 @@ data class Bucket(
     val shade: Boolean = false,
     val soh: Double? = null,
     val hx: Double? = null,
+) {
+    /** Consumption; null under 1 km, where idle heater/AC drain dominates and blows up the scale. */
+    val whPerKm: Double? get() = if (km >= 1.0) wh / km else null
+}
+
+/**
+ * Statistics screen view options (persisted by TripStore): bars in kWh
+ * instead of km, consumption in km/kWh instead of kWh/100 km, and which
+ * overlay lines are shown.
+ */
+data class StatsView(
+    val barsKwh: Boolean = false,
+    val perKwh: Boolean = false,
+    val consumption: Boolean = true,
+    val soh: Boolean = true,
+    val hx: Boolean = true,
 )
 
 data class Period(val buckets: List<Bucket>, val trips: Int) {

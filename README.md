@@ -15,11 +15,14 @@ one row per window, legend on top):
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **UI language**: English or Ukrainian, switched in Settings (persisted).
 - **Statistics screen** (swipe left on the dashboard, swipe right to return, or Settings →
-  Statistics): totals (km, kWh, Wh/km, trips) and a bar chart for the last
+  Statistics): totals (km, kWh, consumption, trips) and a bar chart for the last
   7 days and 30 days (per day) and the last 52 weeks (per Monday-based
   week), from the trip log, with a labelled y grid, weekends (daily charts)
-  and every other month (weekly chart) shaded, and SOH / Hx overlay lines
-  with their max / min for the period on the right. Tap a chart to flip km / kWh.
+  and every other month (weekly chart) shaded, SOH / Hx overlay lines with
+  their max / min for the period on the right, and a consumption line (per
+  bucket with >= 1 km) with its max / min on the left. Header toggles flip
+  the bars km / kWh and consumption kWh/100 km / km/kWh; checkboxes show or
+  hide the consumption, SOH and Hx lines. All of it is remembered.
 - **Update check**: on launch the app reads this repo's git tags (public
   GitHub API, no token) and, when a `vX.Y` tag is above the running version,
   shows an "Update vX.Y available" line on the dashboard and an Update

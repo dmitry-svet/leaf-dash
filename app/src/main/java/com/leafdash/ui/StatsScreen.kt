@@ -1,6 +1,7 @@
 package com.leafdash.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,17 +15,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -40,33 +41,34 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.leafdash.stats.Bucket
 import com.leafdash.stats.Period
 import com.leafdash.stats.Stats
+import com.leafdash.stats.StatsView
 import com.leafdash.trip.TripRecord
 import java.time.LocalDate
 import java.time.ZoneId
 
 /**
  * Trip-log statistics: totals and a bar chart per day for the last week and
- * month, per week for the last year. Tap a chart to flip km <-> kWh. Swipe
- * right to go back. Chart height follows the screen so all three cards fit;
- * y grid lines at a nice step, labelled on the left (unit on the top one);
- * weekends / even months shaded; SOH and Hx lines with max/min on the right.
+ * month, per week for the last year. Header toggles: bars km <-> kWh,
+ * consumption kWh/100 km <-> km/kWh, and checkboxes for the consumption, SOH
+ * and Hx lines ([view], persisted by the caller). Swipe right to go back.
+ * Chart height follows the screen so all three cards fit; y grid lines at a
+ * nice step, labelled on the left (unit on the top one); weekends / even
+ * months shaded; consumption max/min on the far left, SOH and Hx on the right.
  */
 @Composable
-fun StatsScreen(trips: List<TripRecord>, onBack: () -> Unit) {
-    var showKwh by rememberSaveable { mutableStateOf(false) }
+fun StatsScreen(trips: List<TripRecord>, view: StatsView, onView: (StatsView) -> Unit, onBack: () -> Unit) {
     val today = LocalDate.now()
     val zone = ZoneId.systemDefault()
     val week = remember(trips, today) { Stats.week(trips, today, zone) }
     val month = remember(trips, today) { Stats.month(trips, today, zone) }
     val year = remember(trips, today) { Stats.year(trips, today, zone) }
-    // everything but the bars is fixed-height (~420 dp for header, 3 card
-    // chromes, paddings); the rest is split between the three charts
-    val chartH = ((LocalConfiguration.current.screenHeightDp - 420) / 3).dp.coerceIn(40.dp, 110.dp)
+    // everything but the bars is fixed-height (~470 dp for header, toggle
+    // row, 3 card chromes, paddings); the rest is split between the three charts
+    val chartH = ((LocalConfiguration.current.screenHeightDp - 470) / 3).dp.coerceIn(40.dp, 110.dp)
     Column(
         Modifier
             .fillMaxSize()
@@ -85,34 +87,70 @@ fun StatsScreen(trips: List<TripRecord>, onBack: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
             Text(t("Statistics", "Статистика"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                t("tap chart: km/kWh", "тап: км/кВт·г"),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.End,
-            )
+            Spacer(Modifier.weight(1f))
+            UnitToggle(if (view.barsKwh) t("kWh", "кВт·г") else t("km", "км"), MaterialTheme.colorScheme.primary) {
+                onView(view.copy(barsKwh = !view.barsKwh))
+            }
         }
-        PeriodCard(t("Last 7 days", "Останні 7 днів"), week, showKwh, labelEvery = 1, chartH) { showKwh = !showKwh }
-        PeriodCard(t("Last 30 days", "Останні 30 днів"), month, showKwh, labelEvery = 5, chartH) { showKwh = !showKwh }
-        PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, showKwh, labelEvery = 8, chartH) { showKwh = !showKwh }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LineCheck(t("Consumption", "Витрата"), CON_COLOR, view.consumption) { onView(view.copy(consumption = it)) }
+            LineCheck("SOH", SOH_COLOR, view.soh) { onView(view.copy(soh = it)) }
+            LineCheck("Hx", HX_COLOR, view.hx) { onView(view.copy(hx = it)) }
+            Spacer(Modifier.weight(1f))
+            UnitToggle(if (view.perKwh) t("km/kWh", "км/кВт·г") else t("kWh/100 km", "кВт·г/100 км"), CON_COLOR) {
+                onView(view.copy(perKwh = !view.perKwh))
+            }
+        }
+        PeriodCard(t("Last 7 days", "Останні 7 днів"), week, view, labelEvery = 1, chartH)
+        PeriodCard(t("Last 30 days", "Останні 30 днів"), month, view, labelEvery = 5, chartH)
+        PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, view, labelEvery = 8, chartH)
     }
 }
 
+/** Outlined pill showing the current unit; tap flips it. */
 @Composable
-private fun PeriodCard(title: String, p: Period, showKwh: Boolean, labelEvery: Int, chartH: Dp, onFlip: () -> Unit) {
+private fun UnitToggle(text: String, color: Color, onClick: () -> Unit) {
+    Text(
+        "$text ⇄",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = color,
+        maxLines = 1,
+        modifier = Modifier
+            .border(1.5.dp, color, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}
+
+/** Checkbox in the line's colour plus its name; the whole pair is tappable. */
+@Composable
+private fun LineCheck(label: String, color: Color, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.clickable { onChange(!checked) }.padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked, onChange, colors = CheckboxDefaults.colors(checkedColor = color, uncheckedColor = color))
+        Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+    }
+}
+
+/** Consumption in the selected unit: kWh/100 km or km/kWh. */
+private fun consumption(whPerKm: Double, perKwh: Boolean) = if (perKwh) 1000.0 / whPerKm else whPerKm / 10.0
+
+@Composable
+private fun PeriodCard(title: String, p: Period, view: StatsView, labelEvery: Int, chartH: Dp) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
                 Total(t("km", "км"), "%.0f".format(p.totalKm), Modifier.weight(1f))
                 Total(t("kWh", "кВт·г"), "%.1f".format(p.totalWh / 1000.0), Modifier.weight(1f))
-                Total(t("Wh/km", "Вт·г/км"), p.whPerKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f))
+                Total(
+                    if (view.perKwh) t("km/kWh", "км/кВт·г") else t("kWh/100", "кВт·г/100"),
+                    p.whPerKm?.let { "%.1f".format(consumption(it, view.perKwh)) } ?: "--",
+                    Modifier.weight(1f),
+                )
                 Total(t("trips", "поїздок"), p.trips.toString(), Modifier.weight(1f))
             }
-            BarChart(p.buckets, showKwh, labelEvery, chartH, Modifier.fillMaxWidth().clickable(onClick = onFlip))
+            BarChart(p.buckets, view, labelEvery, chartH, Modifier.fillMaxWidth())
         }
     }
 }
@@ -130,12 +168,14 @@ private fun Total(label: String, value: String, modifier: Modifier = Modifier) {
  * value labels in a left margin (unit on the top one; every other label is
  * skipped when the chart is too short for all), x labels under every
  * [labelEvery]th bucket. Shaded buckets get a darker background column.
- * SOH (upper band) and Hx (lower band) are drawn as lines over the bars, each
- * stretched over its own min..max; their max/min values sit in a right margin,
- * pushed apart so they never overlap.
+ * SOH (upper band), Hx (lower band) and consumption (middle 70%) are drawn
+ * as lines over the bars, each stretched over its own min..max and shown only
+ * if enabled in [view]; SOH/Hx max/min sit in a right margin, consumption
+ * max/min in a narrow left margin, pushed apart so they never overlap.
  */
 @Composable
-private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, chartH: Dp, modifier: Modifier = Modifier) {
+private fun BarChart(buckets: List<Bucket>, view: StatsView, labelEvery: Int, chartH: Dp, modifier: Modifier = Modifier) {
+    val showKwh = view.barsKwh
     val values = buckets.map { if (showKwh) it.wh / 1000.0 else it.km }
     val max = values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
     val step = Stats.gridStep(max)
@@ -152,10 +192,21 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val measurer = rememberTextMeasurer()
     val yLayouts = yLabels.map { measurer.measure(it, labelStyle, softWrap = false) }
-    val series = listOf(
-        Series("SOH", buckets.map { it.soh }, SOH_COLOR, 0.55f, 0.92f),
-        Series("Hx", buckets.map { it.hx }, HX_COLOR, 0.08f, 0.45f),
+    val series = listOfNotNull(
+        if (view.soh) Series("SOH", buckets.map { it.soh }, SOH_COLOR, 0.55f, 0.92f) else null,
+        if (view.hx) Series("Hx", buckets.map { it.hx }, HX_COLOR, 0.08f, 0.45f) else null,
     ).filter { it.points.isNotEmpty() }
+    val con = if (view.consumption) {
+        Series("", buckets.map { b -> b.whPerKm?.let { consumption(it, view.perKwh) } }, CON_COLOR, 0.15f, 0.85f)
+            .takeIf { it.points.isNotEmpty() }
+    } else null
+    val leftStyle = labelStyle.copy(color = CON_COLOR, fontWeight = FontWeight.Bold)
+    val leftLayouts = con?.let { c ->
+        listOfNotNull(
+            measurer.measure("%.1f".format(c.hi), leftStyle, softWrap = false),
+            if (c.flat) null else measurer.measure("%.1f".format(c.lo), leftStyle, softWrap = false),
+        )
+    } ?: emptyList()
     val rightLayouts = series.flatMap { s ->
         listOfNotNull(
             measurer.measure("${s.name} ${"%.1f".format(s.hi)}", labelStyle.copy(color = s.color), softWrap = false),
@@ -165,9 +216,10 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
     val density = LocalDensity.current
     val axisW = with(density) { yLayouts.maxOf { it.size.width }.toDp() } + 4.dp
     val rightW = if (rightLayouts.isEmpty()) 0.dp else with(density) { rightLayouts.maxOf { it.size.width }.toDp() } + 4.dp
+    val leftW = if (leftLayouts.isEmpty()) 0.dp else with(density) { leftLayouts.maxOf { it.size.width }.toDp() } + 2.dp
     Column(modifier) {
         Canvas(Modifier.fillMaxWidth().height(chartH)) {
-            val x0 = axisW.toPx()
+            val x0 = (leftW + axisW).toPx()
             val x1 = size.width - rightW.toPx()
             val n = values.size
             val gap = 2.dp.toPx()
@@ -193,30 +245,30 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
                 val h = (v / top * size.height).toFloat()
                 drawRoundRect(barColor, Offset(x0 + i * slot + gap / 2, size.height - h), Size(w, h), r)
             }
-            // overlay lines; right labels collected first, then spread apart
-            val labels = mutableListOf<Pair<TextLayoutResult, Float>>()   // layout, desired top
-            var li = 0
-            series.forEach { s ->
+            // overlay lines; max/min labels collected first, then spread apart
+            fun drawSeries(s: Series, layouts: List<TextLayoutResult>, labels: MutableList<Pair<TextLayoutResult, Float>>) {
                 val pts = s.points.map { (i, v) -> Offset(x0 + i * slot + slot / 2, size.height * (1 - s.frac(v))) }
                 for (k in 1 until pts.size) drawLine(s.color, pts[k - 1], pts[k], strokeWidth = 2.dp.toPx())
                 pts.forEach { drawCircle(s.color, 2.5.dp.toPx(), it) }
-                val hiL = rightLayouts[li++]
-                labels += hiL to size.height * (1 - s.frac(s.hi)) - hiL.size.height / 2
-                if (!s.flat) {
-                    val loL = rightLayouts[li++]
-                    labels += loL to size.height * (1 - s.frac(s.lo)) - loL.size.height / 2
-                }
+                labels += layouts[0] to size.height * (1 - s.frac(s.hi)) - layouts[0].size.height / 2
+                if (!s.flat) labels += layouts[1] to size.height * (1 - s.frac(s.lo)) - layouts[1].size.height / 2
             }
-            val ys = labels.map { it.second }.toFloatArray()
-            for (k in 1 until ys.size) ys[k] = maxOf(ys[k], ys[k - 1] + labels[k - 1].first.size.height)
-            for (k in ys.indices.reversed()) {
-                val limit = if (k == ys.lastIndex) size.height - labels[k].first.size.height else ys[k + 1] - labels[k].first.size.height
-                ys[k] = minOf(ys[k], limit)
+            val right = mutableListOf<Pair<TextLayoutResult, Float>>()   // layout, desired top
+            var li = 0
+            series.forEach { s ->
+                val n = if (s.flat) 1 else 2
+                drawSeries(s, rightLayouts.subList(li, li + n), right)
+                li += n
             }
-            labels.forEachIndexed { k, (l, _) -> drawText(l, topLeft = Offset(x1 + 4.dp.toPx(), ys[k])) }
+            spread(right, size.height).forEachIndexed { k, y -> drawText(right[k].first, topLeft = Offset(x1 + 4.dp.toPx(), y)) }
+            if (con != null) {
+                val left = mutableListOf<Pair<TextLayoutResult, Float>>()
+                drawSeries(con, leftLayouts, left)
+                spread(left, size.height).forEachIndexed { k, y -> drawText(left[k].first, topLeft = Offset(0f, y)) }
+            }
         }
         Row(Modifier.fillMaxWidth().padding(end = rightW)) {
-            Spacer(Modifier.width(axisW))
+            Spacer(Modifier.width(leftW + axisW))
             buckets.forEachIndexed { i, b ->
                 val last = i == buckets.lastIndex
                 Text(
@@ -233,6 +285,18 @@ private fun BarChart(buckets: List<Bucket>, showKwh: Boolean, labelEvery: Int, c
     }
 }
 
+/** Label tops for (layout, desired top) pairs ordered top-down, pushed apart so none overlap and all fit in [height]. */
+private fun spread(labels: List<Pair<TextLayoutResult, Float>>, height: Float): FloatArray {
+    val ys = labels.map { it.second }.toFloatArray()
+    for (k in 1 until ys.size) ys[k] = maxOf(ys[k], ys[k - 1] + labels[k - 1].first.size.height)
+    for (k in ys.indices.reversed()) {
+        val limit = if (k == ys.lastIndex) height - labels[k].first.size.height else ys[k + 1] - labels[k].first.size.height
+        ys[k] = minOf(ys[k], limit)
+    }
+    return ys
+}
+
+private val CON_COLOR = Color(0xFFC8285A)
 private val SOH_COLOR = Color(0xFFD9731A)
 private val HX_COLOR = Color(0xFF0F8A8A)
 

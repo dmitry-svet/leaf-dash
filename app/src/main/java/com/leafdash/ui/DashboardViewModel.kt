@@ -80,6 +80,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         com.leafdash.log.DataLogStore(app.getExternalFilesDir(null) ?: app.filesDir)
     private val _dataLogEnabled = MutableStateFlow(true)
     val dataLogEnabled: StateFlow<Boolean> = _dataLogEnabled.asStateFlow()
+
+    private val _statsView = MutableStateFlow(com.leafdash.stats.StatsView())
+    val statsView: StateFlow<com.leafdash.stats.StatsView> = _statsView.asStateFlow()
     val dataLogPath: String get() = dataLogStore.path
 
     private val _trips = MutableStateFlow<List<TripRecord>>(emptyList())
@@ -106,6 +109,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _reserveKwh.value = tripStore.loadReserveKwh()
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             Lang.uk = tripStore.loadLangUk()
+            _statsView.value = tripStore.loadStatsView()
         }
         checkUpdate()
         viewModelScope.launch {
@@ -281,6 +285,12 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 newer = newest?.takeIf { UpdateCheck.isNewer(it, than = cur) },
             )
         }
+    }
+
+    /** Statistics screen toggles; persisted. */
+    fun setStatsView(v: com.leafdash.stats.StatsView) {
+        _statsView.value = v
+        viewModelScope.launch { tripStore.saveStatsView(v) }
     }
 
     /** UI language; persisted. */

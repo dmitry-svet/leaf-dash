@@ -78,6 +78,28 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[LANG_UK] = uk }
     }
 
+    suspend fun loadStatsView(): com.leafdash.stats.StatsView {
+        val p = context.tripDataStore.data.first()
+        val d = com.leafdash.stats.StatsView()
+        return com.leafdash.stats.StatsView(
+            barsKwh = p[STATS_BARS_KWH] ?: d.barsKwh,
+            perKwh = p[STATS_PER_KWH] ?: d.perKwh,
+            consumption = p[STATS_CONSUMPTION] ?: d.consumption,
+            soh = p[STATS_SOH] ?: d.soh,
+            hx = p[STATS_HX] ?: d.hx,
+        )
+    }
+
+    suspend fun saveStatsView(v: com.leafdash.stats.StatsView) {
+        context.tripDataStore.edit {
+            it[STATS_BARS_KWH] = v.barsKwh
+            it[STATS_PER_KWH] = v.perKwh
+            it[STATS_CONSUMPTION] = v.consumption
+            it[STATS_SOH] = v.soh
+            it[STATS_HX] = v.hx
+        }
+    }
+
     suspend fun loadLastDevice(): String? = context.tripDataStore.data.first()[LAST_DEVICE]
 
     suspend fun saveLastDevice(address: String) {
@@ -115,6 +137,11 @@ class TripStore(private val context: Context) {
         val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val LANG_UK = booleanPreferencesKey("lang_uk")
+        val STATS_BARS_KWH = booleanPreferencesKey("stats_bars_kwh")
+        val STATS_PER_KWH = booleanPreferencesKey("stats_per_kwh")
+        val STATS_CONSUMPTION = booleanPreferencesKey("stats_consumption")
+        val STATS_SOH = booleanPreferencesKey("stats_soh")
+        val STATS_HX = booleanPreferencesKey("stats_hx")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2
         const val DEFAULT_RESERVE_KWH = 2.0
