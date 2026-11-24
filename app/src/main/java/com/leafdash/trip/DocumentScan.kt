@@ -4,6 +4,9 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.provider.DocumentsContract
 
+/** A file found by [DocumentScan]: a readable [uri] and a short path to show. */
+data class FoundFile(val uri: Uri, val path: String)
+
 /** Recursive file search in a folder granted through the system tree picker. */
 object DocumentScan {
     private const val MAX_DIRS = 2000   // bail out on huge trees
@@ -30,5 +33,30 @@ object DocumentScan {
             }
         }
         return out
+    }
+
+    /**
+     * Every file matching [match] in the persisted tree grants of [resolver]
+     * plus the plain [dirs] (non-recursive; readable only where scoped
+     * storage allows). Paths: "Download/x.csv" style, de-duplicated.
+     */
+    fun findAll(resolver: ContentResolver, dirs: List<java.io.File>, match: (String) -> Boolean): List<FoundFile> {
+        val out = linkedMapOf<String, FoundFile>()
+        for (f in dirs) {
+            val files = runCatching { f.listFiles() }.getOrNull() ?: continue
+            for (c in files) if (c.isFile && match(c.name)) {
+                val path = c.absolutePath.substringAfter("/storage/emulated/0/").substringAfter("/sdcard/")
+                out.putIfAbsent(path, FoundFile(Uri.fromFile(c), path))
+            }
+        }
+        for (grant in resolver.persistedUriPermissions) {
+            if (!grant.isReadPermission) continue
+            for (u in find(resolver, grant.uri, match)) {
+                // document id "primary:Download/x.csv" -> "Download/x.csv"
+                val path = runCatching { DocumentsContract.getDocumentId(u) }.getOrNull()?.substringAfter(':') ?: u.toString()
+                out.putIfAbsent(path, FoundFile(u, path))
+            }
+        }
+        return out.values.toList()
     }
 }

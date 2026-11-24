@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,6 +52,8 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
+    leafSpyFound: List<com.leafdash.trip.FoundFile>?,
+    onImportFound: () -> Unit,
     onImportLeafSpy: () -> Unit,
     onScanLeafSpy: () -> Unit,
     onOpenStats: () -> Unit,
@@ -115,9 +118,32 @@ fun SettingsScreen(
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text(t("Trip log", "Журнал поїздок"))
         }
+        Text(t("LeafSpy trip log import", "Імпорт поїздок з LeafSpy"), style = MaterialTheme.typography.titleMedium)
+        Text(
+            when {
+                leafSpyFound == null -> t("Searching accessible folders...", "Шукаю в доступних папках...")
+                leafSpyFound.isEmpty() -> t(
+                    "TripChrgLog_*.csv not found in accessible folders. Android hides LeafSpy's own folder " +
+                        "(Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES): enable Dropbox sync in LeafSpy " +
+                        "or copy the file to Download with a file manager, then pick it or scan its folder " +
+                        "(a scanned folder is re-checked every time Settings opens).",
+                    "TripChrgLog_*.csv не знайдено в доступних папках. Android ховає папку LeafSpy " +
+                        "(Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES): увімкни Dropbox-синхронізацію в LeafSpy " +
+                        "або скопіюй файл у Download файловим менеджером, потім вибери його або його папку " +
+                        "(вибрана папка перевіряється при кожному відкритті налаштувань).",
+                )
+                else -> t("Found:\n", "Знайдено:\n") + leafSpyFound.joinToString("\n") { it.path }
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+        if (!leafSpyFound.isNullOrEmpty()) {
+            Button(onClick = onImportFound, modifier = Modifier.fillMaxWidth()) {
+                Text(t("Import found (${leafSpyFound.size})", "Імпортувати знайдене (${leafSpyFound.size})"))
+            }
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onImportLeafSpy, modifier = Modifier.weight(1f)) {
-                Text(t("Import LeafSpy file", "Імпорт файлу LeafSpy"))
+                Text(t("Pick file", "Вибрати файл"))
             }
             OutlinedButton(onClick = onScanLeafSpy, modifier = Modifier.weight(1f)) {
                 Text(t("Scan folder", "Пошук у папці"))
@@ -125,8 +151,8 @@ fun SettingsScreen(
         }
         Text(
             t(
-                "LeafSpy Pro Trip/Charge log (TripChrgLog_*.csv, in Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES or its Dropbox copy). Drives are merged into the trip log; overlapping ones are skipped. Scan folder searches a chosen folder and its subfolders.",
-                "Журнал Trip/Charge з LeafSpy Pro (TripChrgLog_*.csv, у Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES або його копія з Dropbox). Поїздки додаються до журналу, ті що перетинаються з наявними пропускаються. «Пошук у папці» шукає у вибраній папці та її підпапках.",
+                "Drives are merged into the trip log; those overlapping existing ones are skipped.",
+                "Поїздки додаються до журналу, ті що перетинаються з наявними пропускаються.",
             ),
             style = MaterialTheme.typography.bodySmall,
         )

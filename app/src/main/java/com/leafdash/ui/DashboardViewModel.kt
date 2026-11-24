@@ -314,6 +314,33 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     /** Trip log as CSV (same columns as the table). */
     fun tripsCsv(): String = TripLogStore.toCsv(_trips.value)
 
+    fun isLeafSpyTripLog(name: String) = name.startsWith("TripChrgLog") && name.endsWith(".csv")
+
+    /** LeafSpy trip logs found in accessible folders; null while searching. */
+    private val _leafSpyFound = MutableStateFlow<List<com.leafdash.trip.FoundFile>?>(null)
+    val leafSpyFound: StateFlow<List<com.leafdash.trip.FoundFile>?> = _leafSpyFound.asStateFlow()
+
+    /**
+     * Looks for TripChrgLog_*.csv in LeafSpy's own folder, Download,
+     * Documents, Dropbox (readable on Android 10 and below, or where the
+     * user copied it) and in every folder granted through "Scan folder".
+     */
+    fun scanLeafSpy() {
+        _leafSpyFound.value = null
+        viewModelScope.launch {
+            val ext = android.os.Environment.getExternalStorageDirectory()
+            val dirs = listOf(
+                java.io.File(ext, "Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES"),
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS),
+                java.io.File(ext, "Dropbox/Apps/LeafSpyPro"),
+            )
+            _leafSpyFound.value = withContext(Dispatchers.IO) {
+                com.leafdash.trip.DocumentScan.findAll(getApplication<Application>().contentResolver, dirs, ::isLeafSpyTripLog)
+            }
+        }
+    }
+
     /**
      * Merges drives from LeafSpy Trip/Charge log [csv] into the finished
      * trips (overlapping ones skipped). Returns (parsed, added).

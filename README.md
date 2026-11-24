@@ -55,12 +55,17 @@ one row per window, legend on top):
   driving while the link was down is excluded from both. Stored in
   the app's files dir (`trips.csv` + in-progress `trip_current.csv`, which
   survives an app restart); "Export CSV" saves it anywhere via the system
-  file picker; "Import LeafSpy file" / "Scan folder" (Settings) merge drives
-  from a LeafSpy Pro Trip/Charge log (`TripChrgLog_*.csv`: start time,
-  odometer, distance, net Wh, gids, Ah, SOH, Hx, pack V; charge rows and
-  trips overlapping existing ones are skipped, miles and DD/MM dates
-  handled) — pick the file, or pick a folder and every `TripChrgLog_*.csv`
-  in it and its subfolders is imported; the ↻ button flips the screen between portrait and landscape
+  file picker; Settings -> "LeafSpy trip log import" merges drives from a
+  LeafSpy Pro Trip/Charge log (`TripChrgLog_*.csv`: start time, odometer,
+  distance, net Wh, gids, Ah, SOH, Hx, pack V; charge rows and trips
+  overlapping existing ones are skipped, miles and DD/MM dates handled).
+  Opening Settings searches LeafSpy's folder, Download, Documents, Dropbox
+  and every folder granted earlier via "Scan folder" and lists what it
+  found with an "Import found" button; otherwise it shows how to get the
+  file where the app can see it (Android 11+ hides other apps'
+  `Android/data`). "Pick file" imports one file, "Scan folder" imports
+  every `TripChrgLog_*.csv` in a chosen folder and its subfolders and
+  keeps the grant for later checks; the ↻ button flips the screen between portrait and landscape
   while the log is open (sensor orientation restored on leaving). The table
   keeps its header row and date/time column frozen while scrolling (the CSV
   keeps separate Date and Time columns).

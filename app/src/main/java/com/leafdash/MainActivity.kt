@@ -165,10 +165,13 @@ class MainActivity : ComponentActivity() {
         }
         val leafSpyTree = rememberLauncherForActivityResult(OpenDocumentTree()) { tree ->
             if (tree != null) scope.launch {
+                // keep the grant so the folder is re-checked on every Settings visit
+                runCatching { context.contentResolver.takePersistableUriPermission(tree, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
                 val found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    com.leafdash.trip.DocumentScan.find(context.contentResolver, tree) { it.startsWith("TripChrgLog") && it.endsWith(".csv") }
+                    com.leafdash.trip.DocumentScan.find(context.contentResolver, tree, vm::isLeafSpyTripLog)
                 }
                 importLeafSpy(found)
+                vm.scanLeafSpy()
             }
         }
 
@@ -200,6 +203,8 @@ class MainActivity : ComponentActivity() {
             val reserve by vm.reserveKwh.collectAsState()
             val dataLogOn by vm.dataLogEnabled.collectAsState()
             val update by vm.update.collectAsState()
+            val leafSpyFound by vm.leafSpyFound.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(Unit) { vm.scanLeafSpy() }
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
@@ -213,6 +218,8 @@ class MainActivity : ComponentActivity() {
                 reserveKwh = reserve,
                 onSetReserve = { vm.setReserve(it) },
                 onOpenTripLog = { showTripLog = true },
+                leafSpyFound = leafSpyFound,
+                onImportFound = { importLeafSpy(leafSpyFound.orEmpty().map { it.uri }) },
                 onImportLeafSpy = { leafSpyFile.launch(arrayOf("*/*")) },
                 onScanLeafSpy = { leafSpyTree.launch(null) },
                 onOpenStats = { showStats = true },
