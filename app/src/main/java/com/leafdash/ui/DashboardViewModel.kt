@@ -314,6 +314,22 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     /** Trip log as CSV (same columns as the table). */
     fun tripsCsv(): String = TripLogStore.toCsv(_trips.value)
 
+    /**
+     * Merges drives from LeafSpy Trip/Charge log [csv] into the finished
+     * trips (overlapping ones skipped). Returns (parsed, added).
+     */
+    suspend fun importLeafSpy(csv: String): Pair<Int, Int> {
+        val parsed = com.leafdash.trip.LeafSpyImport.parse(csv, java.time.ZoneId.systemDefault())
+        val merged = com.leafdash.trip.LeafSpyImport.merge(finishedTrips, parsed)
+        val added = merged.size - finishedTrips.size
+        if (added > 0) {
+            finishedTrips = merged
+            withContext(tripLogIo) { tripLogStore.replaceFinished(merged) }
+            publishTrips()
+        }
+        return parsed.size to added
+    }
+
     // diagnostic CSV log in the app's external files dir; capped so it can't grow
     // without bound. Path: Android/data/com.leafdash/files/leafdash-dist.csv
     private val logFile: java.io.File? by lazy {

@@ -72,6 +72,12 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. adb:
 
 ## Lessons learned
 
+- LeafSpy Pro `TripChrgLog_*.csv` (`trip/LeafSpyImport.kt`): Time is the
+  drive start, Energy is per-trip net Wh while Drive/Regen/Charge are
+  cumulative counters, charge rows have dist 0 and Energy < 0, and corrupt
+  rows exist (odo 0 with dist = odometer). Android 11+ hides other apps'
+  `Android/data` from the tree picker, so the file is usually imported
+  from a Dropbox/Downloads copy.
 - ELM327 `ATMA` monitor mode drops 0x5C5 on cheap clones; read it via
   hardware filter (`ATCRA5C5` + `ATMA`, the LeafSpy way) instead.
 - `IsoTp.reassemble` input is per-frame lines even with `ATCAF1`; consecutive

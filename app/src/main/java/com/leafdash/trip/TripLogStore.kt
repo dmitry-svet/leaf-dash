@@ -24,6 +24,9 @@ class TripLogStore(dir: File) {
         finished.appendText(r.toCsv() + "\n")
     }
 
+    /** Rewrites the finished-trips file with [trips] (oldest first). */
+    fun replaceFinished(trips: List<TripRecord>) = finished.writeText(toCsv(trips))
+
     fun loadCurrent(): TripRecord? = parse(current).lastOrNull()
 
     fun saveCurrent(r: TripRecord?) {

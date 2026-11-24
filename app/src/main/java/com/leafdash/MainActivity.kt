@@ -12,6 +12,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
+import androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.activity.viewModels
@@ -138,6 +140,38 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        fun importLeafSpy(uris: List<android.net.Uri>) = scope.launch {
+            var parsed = 0
+            var added = 0
+            val err = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    for (u in uris) {
+                        val text = context.contentResolver.openInputStream(u)?.bufferedReader()?.use { it.readText() } ?: continue
+                        val (p, a) = vm.importLeafSpy(text)
+                        parsed += p; added += a
+                    }
+                }.exceptionOrNull()
+            }
+            val msg = when {
+                err != null -> t("Import failed: ", "Імпорт не вдався: ") + err.message
+                uris.isEmpty() -> t("No TripChrgLog_*.csv found", "TripChrgLog_*.csv не знайдено")
+                parsed == 0 -> t("Not a LeafSpy trip log", "Це не журнал поїздок LeafSpy")
+                else -> t("LeafSpy: $parsed drives, $added new added", "LeafSpy: поїздок $parsed, нових додано $added")
+            }
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+        }
+        val leafSpyFile = rememberLauncherForActivityResult(OpenDocument()) { uri ->
+            if (uri != null) importLeafSpy(listOf(uri))
+        }
+        val leafSpyTree = rememberLauncherForActivityResult(OpenDocumentTree()) { tree ->
+            if (tree != null) scope.launch {
+                val found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.leafdash.trip.DocumentScan.find(context.contentResolver, tree) { it.startsWith("TripChrgLog") && it.endsWith(".csv") }
+                }
+                importLeafSpy(found)
+            }
+        }
+
         if (showStats) {
             val trips by vm.trips.collectAsState()
             BackHandler { showStats = false }
@@ -179,6 +213,8 @@ class MainActivity : ComponentActivity() {
                 reserveKwh = reserve,
                 onSetReserve = { vm.setReserve(it) },
                 onOpenTripLog = { showTripLog = true },
+                onImportLeafSpy = { leafSpyFile.launch(arrayOf("*/*")) },
+                onScanLeafSpy = { leafSpyTree.launch(null) },
                 onOpenStats = { showStats = true },
                 tiresPsi = state.leaf.tiresPsi,
                 onSendDataLog = { sendDataLog() },

@@ -51,6 +51,8 @@ fun SettingsScreen(
     reserveKwh: Double,
     onSetReserve: (Double) -> Unit,
     onOpenTripLog: () -> Unit,
+    onImportLeafSpy: () -> Unit,
+    onScanLeafSpy: () -> Unit,
     onOpenStats: () -> Unit,
     tiresPsi: List<Double?>,
     onSendDataLog: () -> Unit,
@@ -113,6 +115,21 @@ fun SettingsScreen(
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text(t("Trip log", "Журнал поїздок"))
         }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onImportLeafSpy, modifier = Modifier.weight(1f)) {
+                Text(t("Import LeafSpy file", "Імпорт файлу LeafSpy"))
+            }
+            OutlinedButton(onClick = onScanLeafSpy, modifier = Modifier.weight(1f)) {
+                Text(t("Scan folder", "Пошук у папці"))
+            }
+        }
+        Text(
+            t(
+                "LeafSpy Pro Trip/Charge log (TripChrgLog_*.csv, in Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES or its Dropbox copy). Drives are merged into the trip log; overlapping ones are skipped. Scan folder searches a chosen folder and its subfolders.",
+                "Журнал Trip/Charge з LeafSpy Pro (TripChrgLog_*.csv, у Android/data/com.Turbo3.Leaf_Spy_Pro/files/LOG_FILES або його копія з Dropbox). Поїздки додаються до журналу, ті що перетинаються з наявними пропускаються. «Пошук у папці» шукає у вибраній папці та її підпапках.",
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
         Text(t("Tire pressure, bar", "Тиск у шинах, бар"), style = MaterialTheme.typography.titleMedium)
         // poller order: FL, FR, RR, RL
         for ((rowLabel, idx) in listOf(t("Front", "Передні") to listOf(0, 1), t("Rear", "Задні") to listOf(3, 2))) {
