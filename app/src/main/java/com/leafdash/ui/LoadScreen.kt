@@ -2,7 +2,6 @@ package com.leafdash.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -41,16 +40,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.leafdash.can.Load
 import com.leafdash.poll.DashState
-import kotlin.math.ceil
-import kotlin.math.floor
 
 private val MOT = Color(0xFF6650A4)
 private val REG = Color(0xFF2E8C46)
@@ -61,12 +55,12 @@ private val OTH = Color(0xFF827C88)
 
 private const val WINDOW_MS = 120_000L
 
-private class Sample(val t: Long, val battery: Double?, val motor: Double?, val ac: Double, val heat: Double, val aux: Double, val other: Double)
+private class Sample(val t: Long, val motor: Double?)
 
 /**
  * Live load: battery power split into motor (traction / regen), climate
- * (A/C + heater) and aux + other, as dials or bars ([bars], toggled in the
- * header), plus current consumption, remaining energy and a 2-minute chart.
+ * (A/C + heater) and aux + other, as dials or bars ([bars], toggled by the
+ * icon next to the title), plus current consumption and remaining energy.
  * While open the caller puts the poller in fast mode; the header shows the
  * measured update interval. Swipe left to go back.
  */
@@ -84,7 +78,7 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             if (dt < 30_000) intervalMs = intervalMs?.let { it + 0.3 * (dt - it) } ?: dt
         }
         lastMs = now
-        history.add(Sample(now, load.batteryKw, load.motorKw, load.acKw ?: 0.0, load.heaterKw ?: 0.0, load.auxKw ?: 0.0, load.otherKw ?: 0.0))
+        history.add(Sample(now, load.motorKw))
         while (history.isNotEmpty() && history.first().t < now - WINDOW_MS) history.removeAt(0)
     }
 
@@ -106,13 +100,10 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
             Text(t("Load", "Навантаження"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            StyleIcon(bars) { onBars(!bars) }
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(8.dp).background(if (state.connected) REG else Color(0xFFC62828), CircleShape))
             Text(intervalMs?.let { t("%.1f s", "%.1f с").format(it / 1000) } ?: "--", style = MaterialTheme.typography.labelMedium)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Pill(t("Dials", "Циферблати"), !bars, Modifier.weight(1f)) { onBars(false) }
-            Pill(t("Bars", "Смужки"), bars, Modifier.weight(1f)) { onBars(true) }
         }
         TopPlates(state, load)
         val regenMax = history.mapNotNull { it.motor }.minOrNull()?.takeIf { it < 0 }
@@ -129,7 +120,6 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
                 }
             }
         }
-        HistoryChart(history)
         val l = state.leaf
         Text(
             t("Battery ", "Батарея ") + fmt(load.batteryKw, 1) + t(" kW · ", " кВт · ") + fmt(l.packAmps, 1) + t(" A · ", " А · ") +
@@ -140,21 +130,25 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
     }
 }
 
+/** Icon of the other style (dial when showing bars, bars when showing dials); tap switches. */
 @Composable
-private fun Pill(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun StyleIcon(bars: Boolean, onClick: () -> Unit) {
     val c = MaterialTheme.colorScheme.primary
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = if (selected) MaterialTheme.colorScheme.onPrimary else c,
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        modifier = modifier
-            .background(if (selected) c else Color.Transparent, RoundedCornerShape(50))
-            .border(1.5.dp, c, RoundedCornerShape(50))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-    )
+    Canvas(Modifier.size(40.dp).clickable(onClick = onClick).padding(8.dp)) {
+        val w = size.minDimension * 0.14f
+        if (bars) {
+            arc(c, ARC_START, ARC_SWEEP, w)
+            val center = Offset(size.width / 2, size.height / 2)
+            val a = Math.toRadians(300.0)
+            val r = size.minDimension / 2 * 0.7f
+            drawLine(c, center, center + Offset((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat()), strokeWidth = w, cap = StrokeCap.Round)
+        } else {
+            for ((i, f) in listOf(0.9f, 0.55f, 0.75f).withIndex()) {
+                val y = size.height * (0.2f + 0.3f * i)
+                drawLine(c, Offset(w / 2, y), Offset(w / 2 + (size.width - w) * f, y), strokeWidth = w, cap = StrokeCap.Round)
+            }
+        }
+    }
 }
 
 /** Current consumption and remaining energy / range. */
@@ -222,7 +216,6 @@ private fun MotorDial(load: Load, state: DashState, regenMax: Double?) {
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Stat(t("RPM", "Оберти"), rpm(state.leaf.motorRpm), t("rpm", "об/хв"))
-                    Stat(t("Torque", "Момент"), fmt(state.leaf.torqueNm, 0), t("N·m", "Н·м"))
                     Stat(t("Regen max", "Рекуп. макс"), fmt(regenMax, 1), t("kW, 2 min", "кВт, 2 хв"), REG)
                 }
             }
@@ -298,7 +291,7 @@ private fun MotorBars(load: Load, state: DashState) {
                 )
                 Column(horizontalAlignment = Alignment.End) {
                     Text(rpm(state.leaf.motorRpm), fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                    Text(t("rpm · ", "об/хв · ") + fmt(state.leaf.torqueNm, 0) + t(" N·m", " Н·м"), style = MaterialTheme.typography.labelMedium)
+                    Text(t("rpm", "об/хв"), style = MaterialTheme.typography.labelMedium)
                 }
             }
             Canvas(Modifier.fillMaxWidth().height(24.dp)) {
@@ -350,67 +343,6 @@ private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 for ((i, p) in parts.withIndex()) {
                     Box(Modifier.weight(1f)) { Legend(p.first, p.second, if (i == 0) c1 else c2, 30) }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Last 2 minutes, kW: battery power line (green below 0 = regen) over
- * stacked aux / other / A/C / heater areas. Y range grows to fit.
- */
-@Composable
-private fun HistoryChart(history: List<Sample>) {
-    val measurer = rememberTextMeasurer()
-    val grid = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
-    val axis = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    val bat = history.mapNotNull { it.battery }
-    val lo = floor(minOf(-10.0, bat.minOrNull() ?: 0.0) / 10) * 10
-    val hi = ceil(maxOf(20.0, bat.maxOrNull() ?: 0.0) / 10) * 10
-    val step = if (hi - lo > 80) 20.0 else 10.0
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Row {
-                Text(t("Last 2 min, kW", "Останні 2 хв, кВт"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (bat.isNotEmpty()) {
-                    Text(t("min ", "мін ") + fmt(bat.min(), 1) + t("  max ", "  макс ") + fmt(bat.max(), 1), style = MaterialTheme.typography.labelMedium)
-                }
-            }
-            Canvas(Modifier.fillMaxWidth().height(180.dp).padding(top = 8.dp)) {
-                val padL = 30.dp.toPx()
-                val w = size.width - padL
-                val h = size.height - 16.dp.toPx()
-                fun y(kw: Double) = (h * (hi - kw) / (hi - lo)).toFloat()
-                val now = history.lastOrNull()?.t ?: System.currentTimeMillis()
-                fun x(t: Long) = padL + w * (1f - (now - t).toFloat() / WINDOW_MS)
-                var g = lo
-                while (g <= hi + 1e-9) {
-                    drawLine(if (g == 0.0) axis else grid, Offset(padL, y(g)), Offset(size.width, y(g)), strokeWidth = if (g == 0.0) 2f else 1f)
-                    val tl = measurer.measure("%.0f".format(g), labelStyle)
-                    drawText(tl, topLeft = Offset(padL - tl.size.width - 4.dp.toPx(), y(g) - tl.size.height / 2))
-                    g += step
-                }
-                for ((i, s) in history.withIndex()) {
-                    if (i == 0) continue
-                    val x0 = x(history[i - 1].t)
-                    val x1 = x(s.t)
-                    var acc = 0.0
-                    for ((v, c) in listOf(s.aux to AUX, s.other to OTH, s.ac to AC, s.heat to HEAT)) {
-                        if (v > 0) drawRect(c, Offset(x0, y(acc + v)), Size(x1 - x0, y(acc) - y(acc + v)))
-                        acc += v
-                    }
-                }
-                for (i in 1 until history.size) {
-                    val a = history[i - 1].battery ?: continue
-                    val b = history[i].battery ?: continue
-                    drawLine(if (a < 0) REG else MOT, Offset(x(history[i - 1].t), y(a)), Offset(x(history[i].t), y(b)), strokeWidth = 3.dp.toPx())
-                }
-                for ((label, t) in listOf("−2:00" to now - WINDOW_MS, "−1:00" to now - WINDOW_MS / 2, t("now", "зараз") to now)) {
-                    val tl = measurer.measure(label, labelStyle)
-                    val cx = (x(t) - tl.size.width / 2).coerceIn(padL, size.width - tl.size.width)
-                    drawText(tl, topLeft = Offset(cx, h + 2.dp.toPx()))
                 }
             }
         }
