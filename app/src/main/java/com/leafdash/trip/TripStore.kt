@@ -101,6 +101,13 @@ class TripStore(private val context: Context) {
         }
     }
 
+    /** Load screen style: true = bars, false = dials. */
+    suspend fun loadLoadBars(): Boolean = context.tripDataStore.data.first()[LOAD_BARS] ?: false
+
+    suspend fun saveLoadBars(bars: Boolean) {
+        context.tripDataStore.edit { it[LOAD_BARS] = bars }
+    }
+
     /** Last successful update check: time and the newest tag seen then. */
     suspend fun loadUpdateCheck(): Pair<Long?, String?> {
         val p = context.tripDataStore.data.first()
@@ -158,6 +165,7 @@ class TripStore(private val context: Context) {
         val STATS_CONSUMPTION = booleanPreferencesKey("stats_consumption")
         val STATS_SOH = booleanPreferencesKey("stats_soh")
         val STATS_HX = booleanPreferencesKey("stats_hx")
+        val LOAD_BARS = booleanPreferencesKey("load_bars")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2
         const val DEFAULT_RESERVE_KWH = 2.0

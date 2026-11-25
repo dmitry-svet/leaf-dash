@@ -59,6 +59,9 @@ class LeafPoller(
     @Volatile private var unitsMiles = false
     fun setUnitsMiles(m: Boolean) { unitsMiles = m }
 
+    /** Load screen open: poll only pack A/V, speed and VCM power values. */
+    @Volatile var fastLoad = false
+
     @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
@@ -140,6 +143,14 @@ class LeafPoller(
             val status = ArrayList<String>()
             status.add("ELM: ${elm.elmId.ifBlank { "?" }}")
             status.add("Proto: ${elm.protocol.ifBlank { "?" }}")
+            if (fastLoad) {
+                fastLoadCycle(captured, status)
+                cycle++
+                raw = captured
+                debug = status
+                publish(connected = true)
+                continue
+            }
             // slow groups every 10th cycle, but 2161 every cycle until its SOH is
             // in (after a reconnect the first reads can fail and the Ah/66
             // estimate would show for ~45 s otherwise)
@@ -247,6 +258,33 @@ class LeafPoller(
     }
 
     /**
+     * Load screen cycle: pack A/V (LBC 2101), speed and the VCM power DIDs
+     * only, no sleep - about a second per sample instead of ~5. A/C / heater
+     * estimates and 12V every 5th cycle. Distance keeps integrating speed;
+     * SOC, cells and odometer wait until the screen closes.
+     */
+    private fun fastLoadCycle(captured: MutableMap<String, String>, status: MutableList<String>) {
+        val text = elm.queryRaw("2101")
+        captured["2101"] = text
+        leaf = GroupDecoder.apply(leaf, IsoTp.reassemble(text))
+        if (!running) return
+        val sf = elm.readBroadcast(speedBroadcastId)
+        val speed = sf?.let { (((it.u(4) shl 8) or it.u(5)) / 100.0).takeIf { s -> s in 0.0..300.0 } }
+        leaf = leaf.copy(speedKmh = speed)
+        updateDistance(null, speed, System.currentTimeMillis())
+        val slow = cycle % 5 == 0
+        if (slow && running) {
+            elm.queryRaw("ATRV").trim().removeSuffix("V").toDoubleOrNull()?.let { v ->
+                if (v in 5.0..20.0) leaf = leaf.copy(aux12V = v)
+            }
+        }
+        elm.useEcu("797", "79A")
+        queryVcm(captured, if (slow) VcmDecoder.LOAD_FAST + VcmDecoder.LOAD_SLOW else VcmDecoder.LOAD_FAST)
+        elm.useEcu("79B", lbcRxAddr)
+        status.add("fast mode: pack A/V, speed, VCM power")
+    }
+
+    /**
      * VCM (0x797 -> 0x79A) UDS reads: live values every cycle, counters and
      * charge state every 10th, VIN once. A DID that fails 3 times in a row is
      * skipped for the rest of the session (unsupported DIDs cost a timeout
@@ -262,7 +300,12 @@ class LeafPoller(
             if (v == null) vcmFails[VIN_DID] = (vcmFails[VIN_DID] ?: 0) + 1
             else leaf = leaf.copy(vin = v)
         }
-        val dids = if (cycle % 10 == 0) VcmDecoder.FAST + VcmDecoder.SLOW else VcmDecoder.FAST
+        queryVcm(captured, if (cycle % 10 == 0) VcmDecoder.FAST + VcmDecoder.SLOW else VcmDecoder.FAST)
+        elm.useEcu("79B", lbcRxAddr)
+    }
+
+    /** Read [dids] from the VCM (addressing already set); skips DIDs failed 3 times. */
+    private fun queryVcm(captured: MutableMap<String, String>, dids: List<Int>) {
         for (did in dids) {
             if (!running) break
             if ((vcmFails[did] ?: 0) >= 3) continue
@@ -276,7 +319,6 @@ class LeafPoller(
                 vcmFails[did] = (vcmFails[did] ?: 0) + 1
             }
         }
-        elm.useEcu("79B", lbcRxAddr)
     }
 
     /**

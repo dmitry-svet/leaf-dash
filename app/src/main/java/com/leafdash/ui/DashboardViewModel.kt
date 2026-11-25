@@ -84,6 +84,10 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _statsView = MutableStateFlow(com.leafdash.stats.StatsView())
     val statsView: StateFlow<com.leafdash.stats.StatsView> = _statsView.asStateFlow()
+
+    private val _loadBars = MutableStateFlow(false)
+    val loadBars: StateFlow<Boolean> = _loadBars.asStateFlow()
+
     val dataLogPath: String get() = dataLogStore.path
 
     private val _trips = MutableStateFlow<List<TripRecord>>(emptyList())
@@ -111,6 +115,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             Lang.uk = tripStore.loadLangUk()
             _statsView.value = tripStore.loadStatsView()
+            _loadBars.value = tripStore.loadLoadBars()
         }
         viewModelScope.launch {
             _state.value = _state.value.copy(reserveKwh = _reserveKwh.value)
@@ -187,6 +192,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             val session = ++sessionNo
             val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
+            p.fastLoad = fastLoad
             poller = p
 
             collectJob?.cancel()
@@ -310,6 +316,19 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         newest?.takeIf { UpdateCheck.isNewer(it, than = com.leafdash.BuildConfig.VERSION_NAME) }
 
     /** Statistics screen toggles; persisted. */
+    fun setLoadBars(bars: Boolean) {
+        _loadBars.value = bars
+        viewModelScope.launch { tripStore.saveLoadBars(bars) }
+    }
+
+    @Volatile private var fastLoad = false
+
+    /** Load screen open: poller reads only pack A/V, speed and VCM power (~1 s samples). */
+    fun setFastLoad(on: Boolean) {
+        fastLoad = on
+        poller?.fastLoad = on
+    }
+
     fun setStatsView(v: com.leafdash.stats.StatsView) {
         _statsView.value = v
         viewModelScope.launch { tripStore.saveStatsView(v) }

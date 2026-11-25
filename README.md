@@ -23,6 +23,23 @@ one row per window, legend on top):
   bucket with >= 1 km) with its max / min on the left. Header toggles flip
   the bars km / kWh and consumption kWh/100 km / km/kWh; checkboxes show or
   hide the consumption, SOH and Hx lines. All of it is remembered.
+- **Load screen** (swipe right on the dashboard or the small dial icon in
+  its header; swipe left to return): live power split from the VCM -
+  motor (traction / regen, with RPM, torque and the regen peak of the last
+  2 min), climate (A/C + heater) and other (aux + the rest: pack power
+  minus motor, climate and aux, i.e. losses and DC/DC), shown as dials or
+  bars (header toggle, remembered). Climate is one fast VCM value (`1151`);
+  its A/C / heater split follows the ratio of the VCM estimates
+  `1261`/`1262` (outside temperature decides when both are 0). Plates on
+  top: instant consumption (pack kW / speed, from 5 km/h) and remaining kWh
+  with range at the reference efficiency. Below: the last 2 minutes of pack
+  power over the stacked climate / aux / other areas. While the screen is
+  open the poller runs a fast cycle (LBC `2101` for pack A/V + SOC, speed,
+  VCM `1146`/`1151`/`1152`/`1255`/`1254`; A/C / heater estimates and 12V
+  every 5th cycle; no pause) - the header shows the measured update
+  interval. Cells, odometer and other slow values pause until it closes;
+  distance keeps integrating speed and SOC stays fresh, so economy is
+  unaffected.
 - **Update check**: once a day (checked whenever the app comes to the
   foreground) the app reads this repo's git tags (public GitHub API, no
   token) and, when a `vX.Y` tag is above the running version, shows an

@@ -14,6 +14,12 @@ object VcmDecoder {
     /** DIDs that change slowly (every 10th cycle): keeps the poll cycle short. */
     val SLOW = listOf(0x1261, 0x1262, 0x1103, 0x1304, 0x1203, 0x1205, 0x1234, 0x114E, 0x1236, 0x115D)
 
+    /** Load screen fast mode: motor, climate, aux, RPM, torque every cycle. */
+    val LOAD_FAST = listOf(0x1146, 0x1151, 0x1152, 0x1255, 0x1254)
+
+    /** Load screen fast mode, every 5th cycle: A/C and heater estimates. */
+    val LOAD_SLOW = listOf(0x1261, 0x1262)
+
     fun apply(s: LeafState, did: Int, p: ByteArray): LeafState {
         if (p.size < 4 || u(p, 0) != 0x62 || ((u(p, 1) shl 8) or u(p, 2)) != did) return s
         fun d(i: Int) = u(p, 3 + i)

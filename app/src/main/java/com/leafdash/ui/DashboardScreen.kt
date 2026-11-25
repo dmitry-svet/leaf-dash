@@ -54,19 +54,24 @@ fun DashboardScreen(
     onResetTrip: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStats: () -> Unit = {},
+    onOpenLoad: () -> Unit = {},
     showDiag: Boolean = false,
     updateVersion: String? = null,
 ) {
     Column(
         Modifier
             .fillMaxSize()
-            // swipe left anywhere on the dashboard opens the statistics screen
+            // swipe left anywhere on the dashboard opens the statistics screen,
+            // swipe right the live load screen
             .pointerInput(Unit) {
                 val threshold = 120.dp.toPx()
                 var dx = 0f
                 detectHorizontalDragGestures(
                     onDragStart = { dx = 0f },
-                    onDragEnd = { if (dx < -threshold) onOpenStats() },
+                    onDragEnd = {
+                        if (dx < -threshold) onOpenStats()
+                        else if (dx > threshold) onOpenLoad()
+                    },
                 ) { _, delta -> dx += delta }
             }
             .verticalScroll(rememberScrollState())
@@ -106,6 +111,7 @@ fun DashboardScreen(
                 Button(onClick = onConnect) { Text(t("Connect", "Підключити")) }
                 TextButton(onClick = onDemo) { Text(t("Demo", "Демо")) }
             }
+            GaugeButton(onOpenLoad)
             TextButton(onClick = onOpenSettings) {
                 Text("⋮", style = MaterialTheme.typography.titleLarge)   // vertical ellipsis
             }
@@ -454,3 +460,25 @@ private fun tripEffRange(w: TripWindow, kwhRemaining: Double?, refEff: Double): 
 
 private fun fmt(v: Double?, digits: Int, suffix: String = ""): String =
     if (v == null) "--" else "%.${digits}f".format(v) + suffix
+
+/** Small dial icon: opens the live load screen. */
+@Composable
+private fun GaugeButton(onClick: () -> Unit) {
+    val c = MaterialTheme.colorScheme.primary
+    androidx.compose.foundation.Canvas(
+        Modifier
+            .size(40.dp)
+            .clickable(onClick = onClick)
+            .padding(9.dp),
+    ) {
+        val w = size.minDimension * 0.14f
+        val r = size.minDimension / 2 - w / 2
+        val tl = androidx.compose.ui.geometry.Offset(size.width / 2 - r, size.height / 2 - r)
+        val sz = androidx.compose.ui.geometry.Size(2 * r, 2 * r)
+        drawArc(c, 150f, 240f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        val a = Math.toRadians(300.0)
+        val center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+        drawLine(c, center, center + androidx.compose.ui.geometry.Offset((r * 0.8f * Math.cos(a)).toFloat(), (r * 0.8f * Math.sin(a)).toFloat()), strokeWidth = w, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        drawCircle(c, w * 0.9f, center)
+    }
+}

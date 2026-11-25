@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
         var showSettings by rememberSaveable { mutableStateOf(false) }
         var showTripLog by rememberSaveable { mutableStateOf(false) }
         var showStats by rememberSaveable { mutableStateOf(false) }
+        var showLoad by rememberSaveable { mutableStateOf(false) }
 
         // keep the screen awake while a session is connected (driving dashboard)
         val activity = context as? android.app.Activity
@@ -180,6 +181,18 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        if (showLoad) {
+            BackHandler { showLoad = false }
+            // fast poll (pack A/V, speed, VCM power only) while the screen is open
+            androidx.compose.runtime.DisposableEffect(Unit) {
+                vm.setFastLoad(true)
+                onDispose { vm.setFastLoad(false) }
+            }
+            val bars by vm.loadBars.collectAsState()
+            com.leafdash.ui.LoadScreen(state = state, bars = bars, onBars = vm::setLoadBars, onBack = { showLoad = false })
+            return
+        }
+
         if (showStats) {
             val trips by vm.trips.collectAsState()
             BackHandler { showStats = false }
@@ -256,6 +269,7 @@ class MainActivity : ComponentActivity() {
             onResetTrip = { vm.resetTrip() },
             onOpenSettings = { showSettings = true },
             onOpenStats = { showStats = true },
+            onOpenLoad = { showLoad = true },
             showDiag = diagOn,
             updateVersion = update.newer,
         )
