@@ -48,9 +48,15 @@ class LoadTest {
     }
 
     @Test fun motorIsRegenWhenPackCharges() {
-        // VCM 1146 is unsigned (6960 W while the pack took -54.5 A in the car log)
-        val l = Load.of(base.copy(packAmps = -20.0, motorPowerW = 9_000))   // -7 kW at the pack
-        assertEquals(-9.0, l.motorKw!!, 1e-9)
+        // VCM 1146 reads 0 under regen (car, v1.3): the motor is the pack power
+        // left after climate and aux, -7 - 2 - 0.5
+        val l = Load.of(base.copy(packAmps = -20.0, motorPowerW = 0))
+        assertEquals(-9.5, l.motorKw!!, 1e-9)
+        assertEquals(0.0, l.otherKw!!, 1e-9)
+    }
+
+    @Test fun regenNeedsNoVcmMotorReading() {
+        assertEquals(-9.5, Load.of(base.copy(packAmps = -20.0, motorPowerW = null)).motorKw!!, 1e-9)
     }
 
     @Test fun motorIsTractionWhenPackDrains() {
@@ -59,7 +65,7 @@ class LoadTest {
 
     @Test fun lightRegenUnderClimateLoadStillRegen() {
         // pack +1 kW, but climate + aux take 2.5 kW: the motor is feeding 1.5 kW back
-        val l = Load.of(base.copy(packVolts = 400.0, packAmps = 2.5, motorPowerW = 1_500))
+        val l = Load.of(base.copy(packVolts = 400.0, packAmps = 2.5, motorPowerW = 0))
         assertEquals(-1.5, l.motorKw!!, 1e-9)
     }
 }

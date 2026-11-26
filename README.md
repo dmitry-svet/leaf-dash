@@ -31,8 +31,8 @@ one row per window, legend on top):
   bars (icon next to the title switches, remembered). Climate is one fast VCM value (`1151`);
   its A/C / heater split follows the ratio of the VCM estimates
   `1261`/`1262` (outside temperature decides when both are 0). VCM motor
-  power (`1146`) is unsigned, so the motor shows as regen when the pack
-  power minus climate and aux is negative. Plates on top: trip average
+  power (`1146`) is traction only (0 under regen), so when the pack power
+  minus climate and aux is negative, that remainder shows as motor regen. Plates on top: trip average
   consumption, remaining kWh and range at the reference efficiency. Trip
   regen = negative pack power integrated per poll sample (gaps > 30 s
   skipped), reset with the trip, persisted. While the screen is
@@ -198,7 +198,7 @@ Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):
 a timer CR halts ATMA, and the read handles both "STOPPED" and a bare prompt.
 
 VCM UDS reads (`0x797` -> `0x79A`, `22 DID`, public OVMS/OBDb decodes,
-confirmed on the car): every cycle `1146` motor W (x40), `1152` aux (100 W
+confirmed on the car): every cycle `1146` motor W (x40, traction only: 0 under regen), `1152` aux (100 W
 units), `1151` A/C+PTC (250 W), `1156` gear, `1183` 12V A (/256); every
 10th cycle `1261`/`1262` est. A/C (50 W) / heater (250 W), `1103` 12V V
 (/12.5), `1304` power switch, `1203`/`1205` QC / L1-L2 counts, `1234` plug,
