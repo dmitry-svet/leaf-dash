@@ -26,7 +26,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,21 +52,18 @@ private val HEAT = Color(0xFFD95A1A)
 private val AUX = Color(0xFF0F8A8A)
 private val OTH = Color(0xFF827C88)
 
-private const val WINDOW_MS = 120_000L
-
-private class Sample(val t: Long, val motor: Double?)
 
 /**
  * Live load: battery power split into motor (traction / regen), climate
  * (A/C + heater) and aux + other, as dials or bars ([bars], toggled by the
- * icon next to the title), plus current consumption and remaining energy.
+ * icon next to the title), plus trip average consumption, remaining kWh and
+ * range, and the regen energy collected this trip.
  * While open the caller puts the poller in fast mode; the header shows the
  * measured update interval. Swipe left to go back.
  */
 @Composable
 fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBack: () -> Unit) {
     val load = Load.of(state.leaf)
-    val history = remember { mutableStateListOf<Sample>() }
     var lastMs by remember { mutableStateOf(0L) }
     var intervalMs by remember { mutableStateOf<Double?>(null) }
     LaunchedEffect(state.cycle) {
@@ -78,8 +74,6 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             if (dt < 30_000) intervalMs = intervalMs?.let { it + 0.3 * (dt - it) } ?: dt
         }
         lastMs = now
-        history.add(Sample(now, load.motorKw))
-        while (history.isNotEmpty() && history.first().t < now - WINDOW_MS) history.removeAt(0)
     }
 
     Column(
@@ -105,14 +99,13 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             Box(Modifier.size(8.dp).background(if (state.connected) REG else Color(0xFFC62828), CircleShape))
             Text(intervalMs?.let { t("%.1f s", "%.1f с").format(it / 1000) } ?: "--", style = MaterialTheme.typography.labelMedium)
         }
-        TopPlates(state, load)
-        val regenMax = history.mapNotNull { it.motor }.minOrNull()?.takeIf { it < 0 }
+        TopPlates(state)
         if (bars) {
             MotorBars(load, state)
             StackBar(t("Climate", "Клімат"), 5.0, listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw), AC, HEAT)
             StackBar(t("Other", "Інше"), 2.0, listOf(t("Aux", "Допоміжні") to load.auxKw, t("Other", "Інше") to load.otherKw), AUX, OTH)
         } else {
-            MotorDial(load, state, regenMax)
+            MotorDial(load, state)
             Card(Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StackDial(t("Climate", "Клімат"), 5.0, listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw), AC, HEAT, Modifier.weight(1f))
@@ -151,31 +144,25 @@ private fun StyleIcon(bars: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Current consumption and remaining energy / range. */
+/** Trip average consumption, remaining energy and range. */
 @Composable
-private fun TopPlates(state: DashState, load: Load) {
+private fun TopPlates(state: DashState) {
     val usable = state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
     val refEff = (state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Plate(t("Consumption now", "Витрата зараз"), fmt(load.kwhPer100, 1), t("kWh/100", "кВт·г/100"),
-            fmt(state.leaf.speedKmh, 0) + t(" km/h", " км/год"), MOT, Modifier.weight(1f))
-        Plate(t("Remaining", "Залишок"), fmt(usable, 1), t("kWh", "кВт·г"),
-            "≈ " + fmt(usable?.let { it / refEff * 100 }, 0) + t(" km", " км"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        Plate(t("Trip avg", "Витрата поїздки"), fmt(state.trip.kwhPer100, 1), t("kWh/100", "кВт·г/100"), MOT, Modifier.weight(1f))
+        Plate(t("Remaining", "Залишок"), fmt(usable, 1), t("kWh", "кВт·г"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        Plate(t("Range", "Запас"), fmt(usable?.let { it / refEff * 100 }, 0), t("km", "км"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun Plate(label: String, value: String, unit: String, sub: String, color: Color, modifier: Modifier) {
+private fun Plate(label: String, value: String, unit: String, color: Color, modifier: Modifier) {
     Card(modifier) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(value, fontSize = 40.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
-                Column(Modifier.padding(bottom = 6.dp)) {
-                    Text(unit, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                    Text(sub, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                }
-            }
+            Text(value, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+            Text(unit, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
     }
 }
@@ -189,7 +176,7 @@ private fun DrawScope.arc(color: Color, from: Float, sweep: Float, w: Float) {
 }
 
 @Composable
-private fun MotorDial(load: Load, state: DashState, regenMax: Double?) {
+private fun MotorDial(load: Load, state: DashState) {
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val lo = -30.0
     val hi = 80.0
@@ -216,7 +203,7 @@ private fun MotorDial(load: Load, state: DashState, regenMax: Double?) {
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Stat(t("RPM", "Оберти"), rpm(state.leaf.motorRpm), t("rpm", "об/хв"))
-                    Stat(t("Regen max", "Рекуп. макс"), fmt(regenMax, 1), t("kW, 2 min", "кВт, 2 хв"), REG)
+                    Stat(t("Regen, trip", "Рекуп. за поїздку"), fmt(state.tripRegenKwh, 2), t("kWh", "кВт·г"), REG)
                 }
             }
         }
@@ -292,6 +279,8 @@ private fun MotorBars(load: Load, state: DashState) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text(rpm(state.leaf.motorRpm), fontSize = 34.sp, fontWeight = FontWeight.Bold)
                     Text(t("rpm", "об/хв"), style = MaterialTheme.typography.labelMedium)
+                    Text(fmt(state.tripRegenKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = REG)
+                    Text(t("kWh regen, trip", "кВт·г рекуп. за поїздку"), style = MaterialTheme.typography.labelMedium, color = REG)
                 }
             }
             Canvas(Modifier.fillMaxWidth().height(24.dp)) {

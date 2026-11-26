@@ -30,6 +30,7 @@ class TripStore(private val context: Context) {
             emaEff = p[EMA_EFF] ?: 15.0,
             lifetimeKm = p[LIFETIME_KM] ?: 0.0,
             lifetimeKwh = p[LIFETIME_KWH] ?: 0.0,
+            tripRegenKwh = p[TR_REGEN] ?: 0.0,
         )
     }
 
@@ -137,12 +138,14 @@ class TripStore(private val context: Context) {
             p[EMA_EFF] = snap.emaEff
             p[LIFETIME_KM] = snap.lifetimeKm
             p[LIFETIME_KWH] = snap.lifetimeKwh
+            p[TR_REGEN] = snap.tripRegenKwh
             p[SCHEMA_VER] = SCHEMA_CURRENT
         }
     }
 
     private companion object {
         val LC_KM = doublePreferencesKey("lc_km")
+        val TR_REGEN = doublePreferencesKey("trip_regen_kwh")
         val LC_KWH = doublePreferencesKey("lc_kwh")
         val TR_KM = doublePreferencesKey("tr_km")
         val TR_KWH = doublePreferencesKey("tr_kwh")

@@ -34,6 +34,8 @@ data class TripSnapshot(
     val lifetimeKwh: Double = 0.0,
     val chargeMinSoc: Double? = null,
     val emaEff: Double = 15.0,
+    /** Energy put back into the pack (regen) during the trip window, kWh. */
+    val tripRegenKwh: Double = 0.0,
 )
 
 /**
@@ -63,6 +65,11 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
     private var badOdoStreak = 0
     private var chargeMinSoc: Double? = snapshot.chargeMinSoc
 
+    /** Regen energy into the pack since the last trip reset, kWh. */
+    var tripRegenKwh: Double = snapshot.tripRegenKwh
+        private set
+    private var prevPowerMs: Long? = null
+
     /** Smoothed lifetime efficiency, kWh/100 km. */
     var avgKwhPer100: Double = snapshot.emaEff
         private set
@@ -80,9 +87,26 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
     fun rebaseline() {
         prevOdo = null
         prevKwh = null
+        prevPowerMs = null
     }
 
-    fun resetTrip() = trip.reset()
+    fun resetTrip() {
+        trip.reset()
+        tripRegenKwh = 0.0
+    }
+
+    /**
+     * One pack power sample (kW, - = into the pack): negative power times the
+     * time since the previous sample adds to [tripRegenKwh]. Gaps over
+     * [MAX_POWER_GAP_MS] (stalled link) are not counted.
+     */
+    fun onPower(powerKw: Double?, nowMs: Long) {
+        if (powerKw == null) return
+        val prev = prevPowerMs
+        prevPowerMs = nowMs
+        if (prev == null || nowMs <= prev || nowMs - prev > MAX_POWER_GAP_MS) return
+        if (powerKw < 0) tripRegenKwh += -powerKw * (nowMs - prev) / 3_600_000.0
+    }
 
     /** [kwh] must come from one estimator only (SOC-based, `LeafState.kwhFromSoc`). */
     fun onSample(kwh: Double?, cumKm: Double, soc: Double?, speedKmh: Double? = null) {
@@ -145,6 +169,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
         lifetimeKwh = lifetime.kwh,
         chargeMinSoc = chargeMinSoc,
         emaEff = avgKwhPer100,
+        tripRegenKwh = tripRegenKwh,
     )
 
     private companion object {
@@ -156,5 +181,6 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
         const val MOVE_SPEED = 1.0      // km/h; below this = stationary, skip energy
         const val CHARGE_SOC_RISE = 5.0 // % SOC rise above trough = charged
         const val EMA_LEN_KM = 8.0      // smoothing length for lifetime efficiency
+        const val MAX_POWER_GAP_MS = 30_000L  // longer between power samples = stalled link
     }
 }

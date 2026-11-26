@@ -9,7 +9,7 @@ class LoadTest {
     private val base = LeafState(
         packVolts = 350.0, packAmps = 50.0,          // 17.5 kW at the pack
         motorPowerW = 15_000, acPower250W = 8,       // 2.0 kW climate
-        auxPower100W = 5, speedKmh = 100.0,          // 0.5 kW aux
+        auxPower100W = 5,                            // 0.5 kW aux
     )
 
     @Test fun otherIsPackMinusComponents() {
@@ -47,8 +47,19 @@ class LoadTest {
         assertEquals(0.0, warm.heaterKw!!, 1e-9)
     }
 
-    @Test fun instantConsumptionOnlyWhenMoving() {
-        assertEquals(17.5, Load.of(base).kwhPer100!!, 1e-9)   // 17.5 kW at 100 km/h
-        assertNull(Load.of(base.copy(speedKmh = 3.0)).kwhPer100)
+    @Test fun motorIsRegenWhenPackCharges() {
+        // VCM 1146 is unsigned (6960 W while the pack took -54.5 A in the car log)
+        val l = Load.of(base.copy(packAmps = -20.0, motorPowerW = 9_000))   // -7 kW at the pack
+        assertEquals(-9.0, l.motorKw!!, 1e-9)
+    }
+
+    @Test fun motorIsTractionWhenPackDrains() {
+        assertEquals(15.0, Load.of(base).motorKw!!, 1e-9)
+    }
+
+    @Test fun lightRegenUnderClimateLoadStillRegen() {
+        // pack +1 kW, but climate + aux take 2.5 kW: the motor is feeding 1.5 kW back
+        val l = Load.of(base.copy(packVolts = 400.0, packAmps = 2.5, motorPowerW = 1_500))
+        assertEquals(-1.5, l.motorKw!!, 1e-9)
     }
 }

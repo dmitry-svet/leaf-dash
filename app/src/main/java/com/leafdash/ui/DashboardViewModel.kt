@@ -199,6 +199,11 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             collectJob = viewModelScope.launch {
                 p.state.collect { ps ->
                     if (ps.connected) lastActiveMs = System.currentTimeMillis()
+                    // one regen sample per fresh poll cycle (status updates repeat the cycle)
+                    if (ps.connected && ps.cycle != lastPowerCycle) {
+                        lastPowerCycle = ps.cycle
+                        t.onPower(ps.leaf.powerKw, System.currentTimeMillis())
+                    }
                     ps.odometerKm?.let { km ->     // already km + smoothed by poller
                         t.onSample(ps.leaf.kwhFromSoc, km, ps.leaf.socPercent, ps.leaf.speedKmh)
                         if (++samples % 20 == 0) tripStore.save(t.snapshot())
@@ -216,6 +221,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                         odoMiles = unitsMiles,
                         avgKwhPer100 = t.avgKwhPer100,
                         reserveKwh = _reserveKwh.value,
+                        tripRegenKwh = t.tripRegenKwh,
                     )
                 }
             }
@@ -322,6 +328,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Volatile private var fastLoad = false
+    private var lastPowerCycle = -1
 
     /** Load screen open: poller reads only pack A/V, speed and VCM power (~1 s samples). */
     fun setFastLoad(on: Boolean) {

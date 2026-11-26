@@ -149,4 +149,24 @@ class TripTrackerTest {
         t2.onSample(19.0, 1005.0, 90.0, DRIVE)    // charge -> reset lastCharge
         assertEquals(0.0, t2.lastCharge.km, 1e-9)
     }
+
+    @Test fun regenEnergyIntegratesNegativePackPowerPerTrip() {
+        val t = TripTracker()
+        t.onPower(-20.0, 0L)              // first sample: no interval yet
+        t.onPower(-20.0, 9_000L)          // 9 s at 20 kW regen = 0.05 kWh
+        t.onPower(30.0, 18_000L)          // drive: not regen
+        assertEquals(0.05, t.tripRegenKwh, 1e-9)
+        t.resetTrip()
+        assertEquals(0.0, t.tripRegenKwh, 1e-9)
+    }
+
+    @Test fun regenSkipsLongGapsAndRebaseline() {
+        val t = TripTracker(TripSnapshot(tripRegenKwh = 1.0))
+        t.onPower(-20.0, 0L)
+        t.onPower(-20.0, 120_000L)        // 2 min gap: link stalled, not counted
+        t.rebaseline()
+        t.onPower(-20.0, 121_000L)        // first after rebaseline: no interval
+        assertEquals(1.0, t.tripRegenKwh, 1e-9)
+        assertEquals(1.0, t.snapshot().tripRegenKwh, 1e-9)
+    }
 }
