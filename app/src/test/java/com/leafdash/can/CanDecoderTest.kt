@@ -67,4 +67,15 @@ class CanDecoderTest {
         val s = CanDecoder.apply(empty.copy(socPercent = 42.0), frame(0x123, 1, 2, 3))
         assertEquals(42.0, s.socPercent!!, 1e-9)
     }
+    // 0x60D captured on the car: off 00 06, parking 04 06, low 06 06, high 06 0E
+    @Test fun headlightsFrom60D() {
+        assertEquals(false, CanDecoder.headlights(frame(0x60D, 0x00, 0x06, 0, 0, 0, 0, 0, 0)))
+        assertEquals(false, CanDecoder.headlights(frame(0x60D, 0x04, 0x06, 0, 0, 0, 0, 0, 0)))
+        assertEquals(true, CanDecoder.headlights(frame(0x60D, 0x06, 0x06, 0, 0, 0, 0, 0, 0)))
+        assertEquals(true, CanDecoder.headlights(frame(0x60D, 0x06, 0x0E, 0, 0, 0, 0, 0, 0)))
+    }
+
+    @Test fun headlightsNeedsData() {
+        assertNull(CanDecoder.headlights(frame(0x60D)))
+    }
 }

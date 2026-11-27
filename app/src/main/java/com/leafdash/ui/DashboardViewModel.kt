@@ -196,12 +196,14 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             p.setUnitsMiles(unitsMiles)
             p.fastLoad = fastLoad
             p.watchBcm = watchBcm
+            p.watchLights = AppTheme.auto == AutoMode.LIGHTS
             poller = p
 
             collectJob?.cancel()
             collectJob = viewModelScope.launch {
                 p.state.collect { ps ->
                     if (ps.connected) lastActiveMs = System.currentTimeMillis()
+                    ps.leaf.headlightsOn?.let { AppTheme.headlights = it }
                     // one load sample per fresh poll cycle (status updates repeat the cycle)
                     if (ps.connected && ps.cycle != lastPowerCycle) {
                         lastPowerCycle = ps.cycle
@@ -367,8 +369,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tripStore.saveTheme(theme) }
     }
 
-    fun setThemeAuto(auto: Boolean) {
+    fun setThemeAuto(auto: AutoMode) {
         AppTheme.auto = auto
+        poller?.watchLights = auto == AutoMode.LIGHTS
         viewModelScope.launch { tripStore.saveThemeAuto(auto) }
     }
 

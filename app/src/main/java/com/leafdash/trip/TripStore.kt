@@ -95,10 +95,14 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[THEME] = theme.name }
     }
 
-    suspend fun loadThemeAuto(): Boolean = context.tripDataStore.data.first()[THEME_AUTO] ?: false
+    /** Theme auto mode; an unknown stored name falls back to OFF. */
+    suspend fun loadThemeAuto(): com.leafdash.ui.AutoMode =
+        context.tripDataStore.data.first()[THEME_AUTO]
+            ?.let { n -> com.leafdash.ui.AutoMode.entries.firstOrNull { it.name == n } }
+            ?: com.leafdash.ui.AutoMode.OFF
 
-    suspend fun saveThemeAuto(auto: Boolean) {
-        context.tripDataStore.edit { it[THEME_AUTO] = auto }
+    suspend fun saveThemeAuto(auto: com.leafdash.ui.AutoMode) {
+        context.tripDataStore.edit { it[THEME_AUTO] = auto.name }
     }
 
     suspend fun loadStatsView(): com.leafdash.stats.StatsView {
@@ -189,7 +193,7 @@ class TripStore(private val context: Context) {
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val LANG_UK = booleanPreferencesKey("lang_uk")
         val THEME = stringPreferencesKey("theme")
-        val THEME_AUTO = booleanPreferencesKey("theme_auto")
+        val THEME_AUTO = stringPreferencesKey("theme_auto_mode")
         val UPDATE_CHECKED_MS = longPreferencesKey("update_checked_ms")
         val UPDATE_NEWEST = stringPreferencesKey("update_newest")
         val STATS_BARS_KWH = booleanPreferencesKey("stats_bars_kwh")

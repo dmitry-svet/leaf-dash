@@ -65,6 +65,9 @@ class LeafPoller(
     /** Settings open: also read BCM 0x60D each cycle (headlight bit hunt). */
     @Volatile var watchBcm = false
 
+    /** Theme follows headlights: read 0x60D each cycle (every 5th in fast mode). */
+    @Volatile var watchLights = false
+
     @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
@@ -210,11 +213,7 @@ class LeafPoller(
                 }
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
-                if (watchBcm) {
-                    val bf = elm.readBroadcastTimed(bcmBroadcastId, BROADCAST_TIMEOUT_MS)
-                    leaf = leaf.copy(bcm60D = bf?.data?.joinToString(" ") { b -> "%02X".format(b) })
-                    bf?.let { captured["bcm $bcmBroadcastId"] = it.data.joinToString("") { b -> "%02X".format(b) } }
-                }
+                if (watchBcm || watchLights) readBcm(captured)
 
                 // broadcasts that may not exist on every car: timed reads, every
                 // 5th cycle. Gids 0x5B3 comes and goes on this car (LeafSpy sees
@@ -288,6 +287,7 @@ class LeafPoller(
                 if (v in 5.0..20.0) leaf = leaf.copy(aux12V = v)
             }
         }
+        if (slow && watchLights && running) readBcm(captured)
         elm.useEcu("797", "79A")
         queryVcm(captured, if (slow) VcmDecoder.LOAD_FAST + VcmDecoder.LOAD_SLOW else VcmDecoder.LOAD_FAST)
         elm.useEcu("79B", lbcRxAddr)
@@ -408,6 +408,16 @@ class LeafPoller(
             }
             distanceKm = odoAnchorKm!! + sessionDist * speedGain
         }
+    }
+
+    /** BCM 0x60D: raw bytes (Settings view) and the low-beam bit. */
+    private fun readBcm(captured: MutableMap<String, String>) {
+        val bf = elm.readBroadcastTimed(bcmBroadcastId, BROADCAST_TIMEOUT_MS)
+        leaf = leaf.copy(
+            bcm60D = bf?.data?.joinToString(" ") { b -> "%02X".format(b) },
+            headlightsOn = bf?.let { CanDecoder.headlights(it) },
+        )
+        bf?.let { captured["bcm $bcmBroadcastId"] = it.data.joinToString("") { b -> "%02X".format(b) } }
     }
 
     /** Decode odometer km from broadcast 0x5C5: (B1<<16 | B2<<8 | B3). */

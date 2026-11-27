@@ -13,6 +13,12 @@ package com.leafdash.can
  */
 object CanDecoder {
 
+    /**
+     * 0x60D (BCM, car-CAN) low beam on: byte 0 bit 1. Captured on the car:
+     * off 00, parking 04 (bit 2), low 06, high 06 with byte 1 bit 3 (06 -> 0E).
+     */
+    fun headlights(f: CanFrame): Boolean? = if (f.data.isEmpty()) null else (f.u(0) and 0x02) != 0
+
     /** 0x385 tire pressures, PSI = byte / 4, bytes 2..5 = FL, FR, RR, RL; 0 = no data (OVMS). */
     fun tires(f: CanFrame): List<Double?> = (2..5).map { i -> f.u(i).takeIf { it > 0 }?.let { it / 4.0 } }
 

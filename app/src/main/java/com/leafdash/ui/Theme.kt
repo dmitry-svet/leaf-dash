@@ -11,6 +11,9 @@ import androidx.compose.ui.graphics.Color
 /** Selectable UI themes. Stored by name in TripStore. */
 enum class ThemeId { LIGHT, DARK, OLED, NIGHT }
 
+/** When to switch between LIGHT and the chosen dark theme: never, phone night mode, car headlights. */
+enum class AutoMode { OFF, SYSTEM, LIGHTS }
+
 /** App colors that Material's ColorScheme does not cover (chart series, status). */
 data class Pal(
     val mot: Color, val reg: Color, val ac: Color, val heat: Color, val aux: Color, val oth: Color,
@@ -22,20 +25,28 @@ data class Pal(
  * Global theme state, like [Lang]: composables reading [pal] or the scheme
  * recompose when it changes. [theme]/[auto] are persisted by TripStore and
  * loaded in DashboardViewModel.init; [systemDark] is set by MainActivity
- * (the activity is recreated when the system night mode flips).
- * Auto: system light -> LIGHT, system dark -> the chosen theme (DARK if LIGHT is chosen).
+ * (the activity is recreated when the system night mode flips),
+ * [headlights] by DashboardViewModel from CAN 0x60D (kept when unknown).
+ * Auto SYSTEM / LIGHTS: light -> LIGHT, dark -> the chosen theme (DARK if LIGHT is chosen).
  */
 object AppTheme {
     var theme by mutableStateOf(ThemeId.LIGHT)
-    var auto by mutableStateOf(false)
+    var auto by mutableStateOf(AutoMode.OFF)
     var systemDark by mutableStateOf(false)
+    var headlights by mutableStateOf(false)
 
     val effective: ThemeId
-        get() = when {
-            !auto -> theme
-            !systemDark -> ThemeId.LIGHT
-            theme == ThemeId.LIGHT -> ThemeId.DARK
-            else -> theme
+        get() {
+            val dark = when (auto) {
+                AutoMode.OFF -> return theme
+                AutoMode.SYSTEM -> systemDark
+                AutoMode.LIGHTS -> headlights
+            }
+            return when {
+                !dark -> ThemeId.LIGHT
+                theme == ThemeId.LIGHT -> ThemeId.DARK
+                else -> theme
+            }
         }
 
     val pal: Pal get() = PALS.getValue(effective)

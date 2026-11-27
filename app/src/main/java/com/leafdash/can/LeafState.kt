@@ -52,6 +52,8 @@ data class LeafState(
     val tiresPsi: List<Double?> = emptyList(),
     /** Raw 0x60D (BCM: doors/lights) data bytes as hex, read only while Settings is open. */
     val bcm60D: String? = null,
+    /** Low beam on (0x60D byte 0 bit 1); null = not read / no frame. */
+    val headlightsOn: Boolean? = null,
 ) {
     /** Instant DC power at the pack, kW. + discharge, - charge/regen. */
     val powerKw: Double?

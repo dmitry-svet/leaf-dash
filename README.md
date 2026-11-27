@@ -22,9 +22,11 @@ unchanged.
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **UI language**: English or Ukrainian, switched in Settings (persisted).
 - **Theme** (Settings): Light, Dark (Material), OLED (true black) or Night
-  (black with warm amber text, low glare). **Auto** follows the system:
-  light by day, the chosen dark theme when the system is dark (Dark if
-  Light is chosen). Chart and status colors have a palette per theme
+  (black with warm amber text, low glare). **Auto theme**: Off, Phone
+  (light in the phone's day mode, else the chosen dark theme) or
+  Headlights (light while the low beam is off, from CAN `0x60D`, read
+  every cycle, every 5th on the load screen; the last state is kept when
+  no frame comes). A dark mode with Light chosen uses Dark. Chart and status colors have a palette per theme
   (`ui/Theme.kt`).
 - **Statistics screen** (swipe left on the dashboard, swipe right to return, or Settings →
   Statistics): totals (km, kWh, consumption, trips) and a bar chart for the last
@@ -130,8 +132,8 @@ unchanged.
   broadcast `0x385`, refreshed every 5th poll cycle. The full-throttle
   step test moved to the separate Leaf Battery Test app.
 - **CAN 0x60D (BCM)** (Settings): raw bytes plus bytes 0-1 in binary, read
-  each poll cycle only while Settings is open - for finding the headlight
-  bit (OVMS notes: byte 0 bits 0-1, unverified on this car).
+  each poll cycle while Settings is open (and always for the Headlights
+  auto theme).
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
@@ -212,7 +214,7 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 | `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
 | `0x510` | ambient temp (B7*0.5 - 40 C) |
 | `0x385` | tire pressures FL/FR/RR/RL, B2..B5 / 4 PSI (timed read, every 5th cycle) |
-| `0x60D` | BCM doors/lights, raw only (timed read while Settings is open; headlight bit TBD) |
+| `0x60D` | BCM lights (captured on the car): B0 bit 2 parking, B0 bit 1 low beam, B1 bit 3 high beam (timed read: Settings open or Headlights auto theme) |
 | `0x5B3` | gids ((B4&3)<<8 \| B5) - sent only in READY/driving; after 3 misses retried every 20th cycle |
 
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):

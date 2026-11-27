@@ -64,7 +64,7 @@ fun SettingsScreen(
     onSetDataLog: (Boolean) -> Unit,
     onSetLang: (Boolean) -> Unit,
     onSetTheme: (ThemeId) -> Unit,
-    onSetThemeAuto: (Boolean) -> Unit,
+    onSetThemeAuto: (AutoMode) -> Unit,
     update: DashboardViewModel.UpdateState,
     onCheckUpdate: () -> Unit,
     dataLogPath: String,
@@ -95,16 +95,22 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(t("Theme", "Тема"), style = MaterialTheme.typography.titleMedium)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ThemeDropdown(onSetTheme)
-                Checkbox(checked = AppTheme.auto, onCheckedChange = onSetThemeAuto)
-                Text(t("Auto", "Авто"))
-            }
+            ThemeDropdown(onSetTheme)
         }
-        if (AppTheme.auto) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(t("Auto theme", "Авто тема"), style = MaterialTheme.typography.titleMedium)
+            AutoDropdown(onSetThemeAuto)
+        }
+        if (AppTheme.auto != AutoMode.OFF) {
             Text(
-                t("Auto: light by day, the chosen dark theme when the system is dark",
-                    "Авто: вдень світла, коли система темна - вибрана темна тема"),
+                if (AppTheme.auto == AutoMode.SYSTEM) t("Light while the phone is in day mode, else the chosen dark theme",
+                    "Світла, поки телефон у денному режимі, інакше вибрана темна тема")
+                else t("Light while the low beam is off (CAN 0x60D), else the chosen dark theme",
+                    "Світла, поки ближнє світло вимкнене (CAN 0x60D), інакше вибрана темна тема"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -215,8 +221,8 @@ fun SettingsScreen(
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             )
         }
-        Text(t("Read each poll cycle while Settings is open. Toggle the lights (off / Auto / parking / low / high) and watch which bits change; OVMS notes put the headlights in byte 0 bits 0-1.",
-            "Читається кожен цикл, поки відкриті налаштування. Перемикай фари (вимк / Auto / габарити / ближнє / дальнє) і дивись, які біти змінюються; за нотатками OVMS фари в байті 0, біти 0-1."), style = MaterialTheme.typography.bodySmall)
+        Text(t("Read each poll cycle while Settings is open. B0 bit 2 = parking lights, B0 bit 1 = low beam, B1 bit 3 = high beam.",
+            "Читається кожен цикл, поки відкриті налаштування. B0 біт 2 = габарити, B0 біт 1 = ближнє, B1 біт 3 = дальнє."), style = MaterialTheme.typography.bodySmall)
 
         Row(
             Modifier.fillMaxWidth(),
@@ -362,6 +368,27 @@ private fun ThemeDropdown(onSetTheme: (ThemeId) -> Unit) {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             ThemeId.entries.forEach { id ->
                 DropdownMenuItem(text = { Text(themeName(id)) }, onClick = { onSetTheme(id); open = false })
+            }
+        }
+    }
+}
+
+private fun autoName(m: AutoMode) = when (m) {
+    AutoMode.OFF -> t("Off", "Вимк")
+    AutoMode.SYSTEM -> t("Phone", "Телефон")
+    AutoMode.LIGHTS -> t("Headlights", "Фари")
+}
+
+@Composable
+private fun AutoDropdown(onSet: (AutoMode) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }) {
+            Text(autoName(AppTheme.auto) + " ▾")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            AutoMode.entries.forEach { m ->
+                DropdownMenuItem(text = { Text(autoName(m)) }, onClick = { onSet(m); open = false })
             }
         }
     }
