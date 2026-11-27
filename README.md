@@ -9,7 +9,13 @@ LeafSpy code, assets, or branding.
 ## Features
 
 Single screen (landscape puts live tiles beside a compact energy table —
-one row per window, legend on top):
+one row per window, legend on top). On a tablet in landscape (shortest
+side >= 600 dp, e.g. a 10" 1280x800 tab) the dashboard, load and
+statistics screens fill the screen without scrolling: dashboard = 2x5
+tiles (incl. range) beside the energy table; load = plates and motor on
+the left, climate over other on the right (bars or dials); statistics =
+week over month on the left half, year on the right. Phones are
+unchanged.
 
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).

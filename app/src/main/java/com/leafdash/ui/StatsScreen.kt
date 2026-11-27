@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +71,8 @@ fun StatsScreen(trips: List<TripRecord>, view: StatsView, onView: (StatsView) ->
     // row, 3 card chromes with unit captions, paddings); the rest is split
     // between the three charts
     val chartH = ((LocalConfiguration.current.screenHeightDp - 510) / 3).dp.coerceIn(40.dp, 110.dp)
+    // landscape tablet: one header row, week over month on the left half, year on the right, no scroll
+    val tab = tabletLandscape()
     Column(
         Modifier
             .fillMaxSize()
@@ -81,30 +84,60 @@ fun StatsScreen(trips: List<TripRecord>, view: StatsView, onView: (StatsView) ->
                     onDragEnd = { if (dx > threshold) onBack() },
                 ) { _, delta -> dx += delta }
             }
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .then(if (tab) Modifier else Modifier.verticalScroll(rememberScrollState()))
+            .padding(horizontal = if (tab) 8.dp else 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val back: @Composable () -> Unit = {
             TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
             Text(t("Statistics", "Статистика"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            UnitToggle(if (view.barsKwh) t("kWh", "кВт·г") else t("km", "км"), MaterialTheme.colorScheme.primary) {
-                onView(view.copy(barsKwh = !view.barsKwh))
-            }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        val checks: @Composable () -> Unit = {
             LineCheck(t("Consumption", "Витрата"), CON_COLOR, view.consumption) { onView(view.copy(consumption = it)) }
             LineCheck("SOH", SOH_COLOR, view.soh) { onView(view.copy(soh = it)) }
             LineCheck("Hx", HX_COLOR, view.hx) { onView(view.copy(hx = it)) }
-            Spacer(Modifier.weight(1f))
+        }
+        val conToggle: @Composable () -> Unit = {
             UnitToggle(if (view.perKwh) t("km/kWh", "км/кВт·г") else t("kWh/100 km", "кВт·г/100 км"), CON_COLOR) {
                 onView(view.copy(perKwh = !view.perKwh))
             }
         }
-        PeriodCard(t("Last 7 days", "Останні 7 днів"), week, view, labelEvery = 1, chartH)
-        PeriodCard(t("Last 30 days", "Останні 30 днів"), month, view, labelEvery = 5, chartH)
-        PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, view, labelEvery = 8, chartH)
+        val barsToggle: @Composable () -> Unit = {
+            UnitToggle(if (view.barsKwh) t("kWh", "кВт·г") else t("km", "км"), MaterialTheme.colorScheme.primary) {
+                onView(view.copy(barsKwh = !view.barsKwh))
+            }
+        }
+        if (tab) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                back()
+                Spacer(Modifier.width(16.dp))
+                checks()
+                Spacer(Modifier.weight(1f))
+                conToggle()
+                barsToggle()
+            }
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PeriodCard(t("Last 7 days", "Останні 7 днів"), week, view, labelEvery = 1, null, Modifier.fillMaxWidth().weight(1f))
+                    PeriodCard(t("Last 30 days", "Останні 30 днів"), month, view, labelEvery = 4, null, Modifier.fillMaxWidth().weight(1f))
+                }
+                PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, view, labelEvery = 8, null, Modifier.weight(1f).fillMaxHeight())
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                back()
+                Spacer(Modifier.weight(1f))
+                barsToggle()
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                checks()
+                Spacer(Modifier.weight(1f))
+                conToggle()
+            }
+            PeriodCard(t("Last 7 days", "Останні 7 днів"), week, view, labelEvery = 1, chartH)
+            PeriodCard(t("Last 30 days", "Останні 30 днів"), month, view, labelEvery = 5, chartH)
+            PeriodCard(t("Last 52 weeks", "Останні 52 тижні"), year, view, labelEvery = 8, chartH)
+        }
     }
 }
 
@@ -136,10 +169,14 @@ private fun LineCheck(label: String, color: Color, checked: Boolean, onChange: (
 /** Consumption in the selected unit: kWh/100 km or km/kWh. */
 private fun consumption(whPerKm: Double, perKwh: Boolean) = if (perKwh) 1000.0 / whPerKm else whPerKm / 10.0
 
+/** [chartH] null: the card fills [modifier]'s height and the chart takes what the header leaves. */
 @Composable
-private fun PeriodCard(title: String, p: Period, view: StatsView, labelEvery: Int, chartH: Dp) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun PeriodCard(title: String, p: Period, view: StatsView, labelEvery: Int, chartH: Dp?, modifier: Modifier = Modifier.fillMaxWidth()) {
+    Card(modifier) {
+        Column(
+            Modifier.padding(horizontal = 10.dp, vertical = 6.dp).then(if (chartH == null) Modifier.fillMaxHeight() else Modifier),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
                 Total(t("km", "км"), "%.0f".format(p.totalKm), Modifier.weight(1f))
@@ -151,7 +188,7 @@ private fun PeriodCard(title: String, p: Period, view: StatsView, labelEvery: In
                 )
                 Total(t("trips", "поїздок"), p.trips.toString(), Modifier.weight(1f))
             }
-            BarChart(p.buckets, view, labelEvery, chartH, Modifier.fillMaxWidth())
+            BarChart(p.buckets, view, labelEvery, chartH, Modifier.fillMaxWidth().then(if (chartH == null) Modifier.weight(1f) else Modifier))
         }
     }
 }
@@ -176,7 +213,7 @@ private fun Total(label: String, value: String, modifier: Modifier = Modifier) {
  * max/min in a narrow left margin, pushed apart so they never overlap.
  */
 @Composable
-private fun BarChart(buckets: List<Bucket>, view: StatsView, labelEvery: Int, chartH: Dp, modifier: Modifier = Modifier) {
+private fun BarChart(buckets: List<Bucket>, view: StatsView, labelEvery: Int, chartH: Dp?, modifier: Modifier = Modifier) {
     val showKwh = view.barsKwh
     val values = buckets.map { if (showKwh) it.wh / 1000.0 else it.km }
     val max = values.maxOrNull()?.takeIf { it > 0 } ?: 1.0
@@ -226,7 +263,7 @@ private fun BarChart(buckets: List<Bucket>, view: StatsView, labelEvery: Int, ch
     val padTop = with(density) { (unitLayout.size.height + yLayouts[0].size.height / 2).toDp() }
     val leftW = if (leftLayouts.isEmpty()) 0.dp else with(density) { leftLayouts.maxOf { it.size.width }.toDp() } + 2.dp
     Column(modifier) {
-        Canvas(Modifier.fillMaxWidth().height(chartH + padTop)) {
+        Canvas(Modifier.fillMaxWidth().then(if (chartH != null) Modifier.height(chartH + padTop) else Modifier.weight(1f))) {
             val pad = padTop.toPx()
             val ph = size.height - pad                       // plot height below the caption room
             fun yOf(frac: Float) = size.height - frac * ph

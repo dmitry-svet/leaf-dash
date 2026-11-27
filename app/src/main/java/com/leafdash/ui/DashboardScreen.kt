@@ -58,6 +58,8 @@ fun DashboardScreen(
     showDiag: Boolean = false,
     updateVersion: String? = null,
 ) {
+    // landscape tablet: everything on one screen, no scroll (diagnostics need the scroll)
+    val tab = tabletLandscape() && !showDiag
     Column(
         Modifier
             .fillMaxSize()
@@ -74,7 +76,7 @@ fun DashboardScreen(
                     },
                 ) { _, delta -> dx += delta }
             }
-            .verticalScroll(rememberScrollState())
+            .then(if (tab) Modifier else Modifier.verticalScroll(rememberScrollState()))
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -133,7 +135,12 @@ fun DashboardScreen(
         // portrait
         val landscape =
             LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        if (landscape) {
+        if (tab) {
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TabletTiles(state, Modifier.weight(1f).fillMaxHeight())
+                EnergyEconomy(state, onResetTrip, Modifier.weight(1.4f).fillMaxHeight(), compact = true, big = true)
+            }
+        } else if (landscape) {
             // equal-height blocks: the taller one sets the height, rows in the
             // other spread out to match
             Row(
@@ -222,6 +229,43 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
     }
 }
 
+/** Landscape tablet: 5 rows of 2 tiles filling the height (range here, as the table has no room for a plate). */
+@Composable
+private fun TabletTiles(state: DashState, modifier: Modifier = Modifier) {
+    val leaf = state.leaf
+    val tempStr = if (leaf.batteryTempsC.isEmpty()) "--"
+        else leaf.batteryTempsC.joinToString(" / ") { "%.0f".format(it) } + " C"
+    val refEff = (state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
+    val usable = usableKwh(state)
+    val big = MaterialTheme.typography.displayMedium
+    val mid = MaterialTheme.typography.displaySmall
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        @Composable
+        fun row(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) =
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp), content = content)
+        row {
+            Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), style = big)
+            Tile(t("Usable", "Доступно"), fmt(usable, 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+        }
+        row {
+            Tile(t("Range", "Запас"), usable?.let { "%.0f".format(it / refEff * 100) + t(" km", " км") } ?: "--", Modifier.weight(1f).fillMaxHeight(), style = big)
+            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(1f).fillMaxHeight(), MaterialTheme.typography.headlineMedium)
+        }
+        row {
+            Tile("SOH", fmt(leaf.sohPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+            Tile("Hx", fmt(leaf.hx, 1, "%"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+        }
+        row {
+            Tile(t("Odo km", "Пробіг км"), state.odoKm?.let { "%.0f".format(it) } ?: "--", Modifier.weight(1f).fillMaxHeight(), style = mid)
+            Tile("12V", fmt(leaf.aux12V, 1, " V"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+        }
+        row {
+            Tile(t("Bat temp", "Батарея"), tempStr, Modifier.weight(1f).fillMaxHeight(), style = mid)
+            Tile(t("Ext temp", "Зовні"), fmt(leaf.ambientTempC, 0, " C"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+        }
+    }
+}
+
 // energy economy: km from odometer, kWh from battery drop.
 // Always shown - keeps last values after disconnect.
 @Composable
@@ -230,6 +274,7 @@ private fun EnergyEconomy(
     onResetTrip: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    big: Boolean = false,
 ) {
     // stable efficiency for short windows: prefer the all-time lifetime
     // average, else the smoothed EMA
@@ -252,16 +297,16 @@ private fun EnergyEconomy(
                     for (label in listOf(t("km", "км"), t("kWh", "кВт·г"), effLabel(perKwh), t("range km", "запас км"))) {
                         Text(
                             label,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = if (big) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             modifier = Modifier.weight(1f).clickable(onClick = flip),
                         )
                     }
                 }
-                TripRow(t("Lifetime", "Загалом"), state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0)
-                TripRow(t("Since last charge", "З останньої зарядки"), state.lastCharge, kwhRemaining, refEff, perKwh, flip)
-                TripRow(t("Since car on", "З увімкнення"), state.carOn, kwhRemaining, refEff, perKwh, flip)
-                TripRow(t("Trip", "Поїздка"), state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip)
+                TripRow(t("Lifetime", "Загалом"), state.lifetime, kwhRemaining, refEff, perKwh, flip, kmDigits = 0, kwhDigits = 0, big = big)
+                TripRow(t("Since last charge", "З останньої зарядки"), state.lastCharge, kwhRemaining, refEff, perKwh, flip, big = big)
+                TripRow(t("Since car on", "З увімкнення"), state.carOn, kwhRemaining, refEff, perKwh, flip, big = big)
+                TripRow(t("Trip", "Поїздка"), state.trip, kwhRemaining, refEff, perKwh, flip, onReset = onResetTrip, big = big)
             }
         }
     } else {
@@ -291,8 +336,10 @@ private fun TripRow(
     onReset: (() -> Unit)? = null,
     kmDigits: Int = 1,
     kwhDigits: Int = 2,
+    big: Boolean = false,
 ) {
     val (eff, range) = tripEffRange(w, kwhRemaining, refEff)
+    val vs = if (big) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -301,7 +348,7 @@ private fun TripRow(
         Row(Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleSmall,
+                style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f, fill = false),
             )
@@ -315,10 +362,10 @@ private fun TripRow(
                 )
             }
         }
-        FitText(fmt(w.km, kmDigits), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
-        FitText(fmt(w.kwh, kwhDigits), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
-        FitText(effText(w, eff, perKwh), MaterialTheme.typography.headlineMedium, Modifier.weight(1f).clickable(onClick = onFlipEff))
-        FitText(fmt(range, 0), MaterialTheme.typography.headlineMedium, Modifier.weight(1f))
+        FitText(fmt(w.km, kmDigits), vs, Modifier.weight(1f))
+        FitText(fmt(w.kwh, kwhDigits), vs, Modifier.weight(1f))
+        FitText(effText(w, eff, perKwh), vs, Modifier.weight(1f).clickable(onClick = onFlipEff))
+        FitText(fmt(range, 0), vs, Modifier.weight(1f))
     }
 }
 
@@ -345,13 +392,13 @@ private fun FitText(
 }
 
 @Composable
-private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false) {
+private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false, style: TextStyle? = null) {
     Card(modifier) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(10.dp).then(if (style != null) Modifier.fillMaxHeight() else Modifier), verticalArrangement = Arrangement.SpaceBetween) {
             Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             FitText(
                 value,
-                style = if (big) MaterialTheme.typography.headlineLarge
+                style = style ?: if (big) MaterialTheme.typography.headlineLarge
                 else MaterialTheme.typography.headlineSmall,
             )
         }
@@ -360,7 +407,7 @@ private fun Tile(label: String, value: String, modifier: Modifier = Modifier, bi
 
 /** Weakest cell voltage over cell spread, stacked, no legend. */
 @Composable
-private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifier) {
+private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifier, style: TextStyle? = null) {
     val spreadMv = if (minV != null && maxV != null) (maxV - minV) * 1000.0 else null
     val danger = Color(0xFFC62828)
     Card(modifier) {
@@ -370,12 +417,12 @@ private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifie
         ) {
             FitText(
                 fmt(minV, 1, "V"),
-                MaterialTheme.typography.titleLarge,
+                style ?: MaterialTheme.typography.titleLarge,
                 color = danger.takeIf { minV != null && minV < CELL_MIN_DANGER_V },
             )
             FitText(
                 spreadMv?.let { "%.0fmV".format(it) } ?: "--",
-                MaterialTheme.typography.titleLarge,
+                style ?: MaterialTheme.typography.titleLarge,
                 color = danger.takeIf { spreadMv != null && spreadMv > CELL_SPREAD_DANGER_MV },
             )
         }
