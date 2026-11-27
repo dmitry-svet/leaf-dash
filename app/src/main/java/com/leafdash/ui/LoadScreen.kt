@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.leafdash.can.Load
 import com.leafdash.can.LoadPoint
+import com.leafdash.can.motorChartRange
 import com.leafdash.poll.DashState
 
 private val MOT = Color(0xFF6650A4)
@@ -187,7 +188,8 @@ private fun MotorDial(load: Load, state: DashState) {
     val lo = -30.0
     val hi = 80.0
     val v = load.motorKw
-    ChartCard({ motorChart(state.loadHistory, lo, hi) }) {
+    val (cLo, cHi) = motorChartRange(state.loadHistory)
+    ChartCard({ motorChart(state.loadHistory, cLo, cHi) }, motorLabel(cLo, cHi)) {
         Column(Modifier.padding(12.dp)) {
             Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -262,6 +264,18 @@ private fun DialCard(title: String, hi: Double, parts: List<Pair<String, Double?
     }
 }
 
+/** Colour box and label on one line, the value under it (narrow columns). */
+@Composable
+private fun LegendAbove(label: String, v: Double?, color: Color) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).background(color, RoundedCornerShape(2.dp)))
+            Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 6.dp), maxLines = 1)
+        }
+        Text(fmt(v, 2), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+    }
+}
+
 @Composable
 private fun Legend(label: String, v: Double?, color: Color, size: Int) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -279,24 +293,29 @@ private fun MotorBars(load: Load, state: DashState) {
     val lo = -30.0
     val hi = 80.0
     val v = load.motorKw
-    ChartCard({ motorChart(state.loadHistory, lo, hi) }) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(fmt(v, 1), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = if ((v ?: 0.0) < 0) REG else MOT)
-                Text(
-                    if ((v ?: 0.0) < 0) t(" kW regen", " кВт рекуп.") else t(" kW traction", " кВт тяга"),
-                    style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp).weight(1f),
-                )
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(rpm(state.leaf.motorRpm), fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                    Text(t("rpm", "об/хв"), style = MaterialTheme.typography.labelMedium)
-                    Text(fmt(state.loadEnergy.tractionKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MOT)
-                    Text(t("kWh traction, trip", "кВт·г тяга за поїздку"), style = MaterialTheme.typography.labelMedium, color = MOT)
-                    Text(fmt(state.loadEnergy.regenKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = REG)
-                    Text(t("kWh regen, trip", "кВт·г рекуп. за поїздку"), style = MaterialTheme.typography.labelMedium, color = REG)
+    val (cLo, cHi) = motorChartRange(state.loadHistory)
+    Card(Modifier.fillMaxWidth()) {
+        ChartBox({ motorChart(state.loadHistory, cLo, cHi) }, motorLabel(cLo, cHi), Alignment.BottomStart) {
+            Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(fmt(v, 1), fontSize = 64.sp, fontWeight = FontWeight.Bold, color = if ((v ?: 0.0) < 0) REG else MOT)
+                    Text(
+                        if ((v ?: 0.0) < 0) t(" kW regen", " кВт рекуп.") else t(" kW traction", " кВт тяга"),
+                        style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp).weight(1f),
+                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(rpm(state.leaf.motorRpm), fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                        Text(t("rpm", "об/хв"), style = MaterialTheme.typography.labelMedium)
+                        Text(fmt(state.loadEnergy.tractionKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MOT)
+                        Text(t("kWh traction, trip", "кВт·г тяга за поїздку"), style = MaterialTheme.typography.labelMedium, color = MOT)
+                        Text(fmt(state.loadEnergy.regenKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = REG)
+                        Text(t("kWh regen, trip", "кВт·г рекуп. за поїздку"), style = MaterialTheme.typography.labelMedium, color = REG)
+                    }
                 }
             }
+        }
+        Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Canvas(Modifier.fillMaxWidth().height(24.dp)) {
                 fun x(k: Double) = (size.width * (k - lo) / (hi - lo)).toFloat()
                 val r = CornerRadius(size.height / 2)
@@ -345,7 +364,7 @@ private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?
             }
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 for ((i, p) in parts.withIndex()) {
-                    Box(Modifier.weight(1f)) { Legend(p.first, p.second, if (i == 0) c1 else c2, 30) }
+                    Box(Modifier.weight(1f)) { LegendAbove(p.first, p.second, if (i == 0) c1 else c2) }
                 }
                 Box(Modifier.weight(1f)) { Stat(t("This trip", "За поїздку"), fmt(tripKwh, 2), t("kWh", "кВт·г")) }
             }
@@ -355,18 +374,25 @@ private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?
 
 /** Card with an optional chart drawn behind its content (the card clips it to its shape). */
 @Composable
-private fun ChartCard(chart: (DrawScope.() -> Unit)?, content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Box {
-            if (chart != null) {
-                Canvas(Modifier.matchParentSize()) { chart() }
-                Text(t("5 min", "5 хв"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 4.dp))
-            }
-            content()
+private fun ChartCard(chart: (DrawScope.() -> Unit)?, label: String = t("5 min", "5 хв"), content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth()) { ChartBox(chart, label, Alignment.BottomEnd, content) }
+}
+
+/** [content] over an optional [chart] filling the same box, with a small [label] at [labelAt]. */
+@Composable
+private fun ChartBox(chart: (DrawScope.() -> Unit)?, label: String, labelAt: Alignment, content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth()) {
+        if (chart != null) {
+            Canvas(Modifier.matchParentSize()) { chart() }
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(labelAt).padding(horizontal = 12.dp, vertical = 4.dp))
         }
+        content()
     }
 }
+
+/** Chart caption for the motor: window and the auto scale's ends. */
+private fun motorLabel(lo: Double, hi: Double) = t("5 min", "5 хв") + "  ↑" + "%.0f".format(hi) + "  ↓" + "%.0f".format(-lo) + t(" kW", " кВт")
 
 private const val CHART_MS = 300_000L
 private const val CHART_GAP_MS = 30_000L

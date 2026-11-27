@@ -36,8 +36,10 @@ one row per window, legend on top):
   card shows its energy this trip (motor: traction and regen separately):
   component power integrated per poll sample (gaps > 30 s skipped), reset
   with the trip, persisted. Motor and climate cards draw the last 5 min
-  as a pale area chart in the background (motor: traction up, regen down;
-  climate: A/C + heater stacked); kept in memory only. While the screen is
+  as a pale area chart in the background (motor: traction up, regen down,
+  0 at a third of the height, auto scale to the window's max traction /
+  regen with its ends in the caption, above the bar in the bars view;
+  climate: A/C + heater stacked, 0-5 kW); kept in memory only. While the screen is
   open the poller runs a fast cycle (LBC `2101` for pack A/V + SOC, speed,
   VCM `1146`/`1151`/`1152`/`1255`; A/C / heater estimates and 12V
   every 5th cycle; no pause) - the header shows the measured update
