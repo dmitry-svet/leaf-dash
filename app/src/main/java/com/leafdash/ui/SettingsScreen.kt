@@ -57,6 +57,8 @@ fun SettingsScreen(
     onScanLeafSpy: () -> Unit,
     onOpenStats: () -> Unit,
     tiresPsi: List<Double?>,
+    bcm60D: String?,
+    connected: Boolean,
     onSendDataLog: () -> Unit,
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
@@ -197,6 +199,24 @@ fun SettingsScreen(
         }
         Text(t("From the car's TPMS (CAN 0x385), read every 5th poll cycle (~25 s) on a live connection.",
             "З TPMS авто (CAN 0x385), читається кожен 5-й цикл (~25 с) при живому з'єднанні."), style = MaterialTheme.typography.bodySmall)
+
+        // headlight bit hunt: raw BCM 0x60D, bytes 0-1 also in binary
+        Text("CAN 0x60D (BCM)", style = MaterialTheme.typography.titleMedium)
+        Text(
+            bcm60D ?: if (connected) t("no frame", "кадру немає") else t("not connected", "не підключено"),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+        )
+        bcm60D?.split(" ")?.take(2)?.forEachIndexed { i, h ->
+            Text(
+                "B$i: " + (h.toIntOrNull(16)?.let { Integer.toBinaryString(it).padStart(8, '0').chunked(4).joinToString(" ") } ?: "--"),
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            )
+        }
+        Text(t("Read each poll cycle while Settings is open. Toggle the lights (off / Auto / parking / low / high) and watch which bits change; OVMS notes put the headlights in byte 0 bits 0-1.",
+            "Читається кожен цикл, поки відкриті налаштування. Перемикай фари (вимк / Auto / габарити / ближнє / дальнє) і дивись, які біти змінюються; за нотатками OVMS фари в байті 0, біти 0-1."), style = MaterialTheme.typography.bodySmall)
 
         Row(
             Modifier.fillMaxWidth(),

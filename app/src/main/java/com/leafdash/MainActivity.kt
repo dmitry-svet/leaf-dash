@@ -227,6 +227,10 @@ class MainActivity : ComponentActivity() {
             val update by vm.update.collectAsState()
             val leafSpyFound by vm.leafSpyFound.collectAsState()
             androidx.compose.runtime.LaunchedEffect(Unit) { vm.scanLeafSpy() }
+            androidx.compose.runtime.DisposableEffect(Unit) {
+                vm.setWatchBcm(true)
+                onDispose { vm.setWatchBcm(false) }
+            }
             com.leafdash.ui.SettingsScreen(
                 odoMiles = state.odoMiles,
                 onSetUnits = { vm.setUnits(it) },
@@ -246,6 +250,8 @@ class MainActivity : ComponentActivity() {
                 onScanLeafSpy = { leafSpyTree.launch(null) },
                 onOpenStats = { showStats = true },
                 tiresPsi = state.leaf.tiresPsi,
+                bcm60D = state.leaf.bcm60D,
+                connected = state.connected,
                 onSendDataLog = { sendDataLog() },
                 dataLogEnabled = dataLogOn,
                 onSetDataLog = { vm.setDataLog(it) },

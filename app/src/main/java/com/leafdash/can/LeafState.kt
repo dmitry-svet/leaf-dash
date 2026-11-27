@@ -50,6 +50,8 @@ data class LeafState(
     val meterOdoKm: Int? = null,
     /** Tire pressures PSI: FL, FR, RR, RL (0x385); null = no data. */
     val tiresPsi: List<Double?> = emptyList(),
+    /** Raw 0x60D (BCM: doors/lights) data bytes as hex, read only while Settings is open. */
+    val bcm60D: String? = null,
 ) {
     /** Instant DC power at the pack, kW. + discharge, - charge/regen. */
     val powerKw: Double?

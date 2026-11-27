@@ -195,6 +195,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
             p.fastLoad = fastLoad
+            p.watchBcm = watchBcm
             poller = p
 
             collectJob?.cancel()
@@ -334,6 +335,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Volatile private var fastLoad = false
+    @Volatile private var watchBcm = false
     private var lastPowerCycle = -1
     private val loadHistory = com.leafdash.can.LoadHistory()
 
@@ -341,6 +343,12 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun setFastLoad(on: Boolean) {
         fastLoad = on
         poller?.fastLoad = on
+    }
+
+    /** Settings open: poller also reads BCM 0x60D (headlight bit hunt). */
+    fun setWatchBcm(on: Boolean) {
+        watchBcm = on
+        poller?.watchBcm = on
     }
 
     fun setStatsView(v: com.leafdash.stats.StatsView) {

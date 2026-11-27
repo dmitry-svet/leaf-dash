@@ -229,27 +229,25 @@ private fun LiveTiles(state: DashState, modifier: Modifier = Modifier, stretch: 
     }
 }
 
-/** Landscape tablet: 5 rows of 2 tiles filling the height (range here, as the table has no room for a plate). */
+/** Landscape tablet: SOC across the top, then 4 rows of 2 tiles filling the height (range is in the table). */
 @Composable
 private fun TabletTiles(state: DashState, modifier: Modifier = Modifier) {
     val leaf = state.leaf
     val tempStr = if (leaf.batteryTempsC.isEmpty()) "--"
         else leaf.batteryTempsC.joinToString(" / ") { "%.0f".format(it) } + " C"
-    val refEff = (state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
     val usable = usableKwh(state)
-    val big = MaterialTheme.typography.displayMedium
-    val mid = MaterialTheme.typography.displaySmall
+    val big = MaterialTheme.typography.displayLarge
+    val mid = MaterialTheme.typography.displayMedium
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         @Composable
         fun row(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) =
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp), content = content)
         row {
             Tile("SOC", fmt(leaf.socPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), style = big)
-            Tile(t("Usable", "Доступно"), fmt(usable, 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), style = mid)
         }
         row {
-            Tile(t("Range", "Запас"), usable?.let { "%.0f".format(it / refEff * 100) + t(" km", " км") } ?: "--", Modifier.weight(1f).fillMaxHeight(), style = big)
-            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(1f).fillMaxHeight(), MaterialTheme.typography.headlineMedium)
+            Tile(t("Usable", "Доступно"), fmt(usable, 1, " kWh"), Modifier.weight(1f).fillMaxHeight(), style = mid)
+            CellsTile(leaf.cellMinV, leaf.cellMaxV, Modifier.weight(1f).fillMaxHeight(), MaterialTheme.typography.displaySmall)
         }
         row {
             Tile("SOH", fmt(leaf.sohPercent, 1, "%"), Modifier.weight(1f).fillMaxHeight(), style = mid)
@@ -297,7 +295,7 @@ private fun EnergyEconomy(
                     for (label in listOf(t("km", "км"), t("kWh", "кВт·г"), effLabel(perKwh), t("range km", "запас км"))) {
                         Text(
                             label,
-                            style = if (big) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelSmall,
+                            style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             modifier = Modifier.weight(1f).clickable(onClick = flip),
                         )
@@ -339,7 +337,7 @@ private fun TripRow(
     big: Boolean = false,
 ) {
     val (eff, range) = tripEffRange(w, kwhRemaining, refEff)
-    val vs = if (big) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium
+    val vs = if (big) MaterialTheme.typography.displayMedium else MaterialTheme.typography.headlineMedium
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -348,14 +346,14 @@ private fun TripRow(
         Row(Modifier.weight(1.5f), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 title,
-                style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                style = if (big) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f, fill = false),
             )
             if (onReset != null) {
                 Text(
                     t("Reset", "Скинути"),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable(onClick = onReset).padding(horizontal = 8.dp, vertical = 2.dp),
@@ -395,7 +393,7 @@ private fun FitText(
 private fun Tile(label: String, value: String, modifier: Modifier = Modifier, big: Boolean = false, style: TextStyle? = null) {
     Card(modifier) {
         Column(Modifier.padding(10.dp).then(if (style != null) Modifier.fillMaxHeight() else Modifier), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, style = if (style != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             FitText(
                 value,
                 style = style ?: if (big) MaterialTheme.typography.headlineLarge

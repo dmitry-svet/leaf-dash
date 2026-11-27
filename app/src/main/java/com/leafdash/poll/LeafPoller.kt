@@ -62,6 +62,9 @@ class LeafPoller(
     /** Load screen open: poll only pack A/V, speed and VCM power values. */
     @Volatile var fastLoad = false
 
+    /** Settings open: also read BCM 0x60D each cycle (headlight bit hunt). */
+    @Volatile var watchBcm = false
+
     @Volatile private var lastProgressMs = 0L
 
     /** Battery-controller diagnostic groups to poll in active mode. */
@@ -76,6 +79,7 @@ class LeafPoller(
     private val speedBroadcastId = "284"
     private val tireBroadcastId = "385"
     private val gidsBroadcastId = "5B3"
+    private val bcmBroadcastId = "60D"
 
     private fun status(msg: String) {
         lastProgressMs = System.currentTimeMillis()
@@ -205,6 +209,12 @@ class LeafPoller(
                     if (v in 5.0..20.0) leaf = leaf.copy(aux12V = v)
                 }
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
+
+                if (watchBcm) {
+                    val bf = elm.readBroadcastTimed(bcmBroadcastId, BROADCAST_TIMEOUT_MS)
+                    leaf = leaf.copy(bcm60D = bf?.data?.joinToString(" ") { b -> "%02X".format(b) })
+                    bf?.let { captured["bcm $bcmBroadcastId"] = it.data.joinToString("") { b -> "%02X".format(b) } }
+                }
 
                 // broadcasts that may not exist on every car: timed reads, every
                 // 5th cycle. Gids 0x5B3 comes and goes on this car (LeafSpy sees

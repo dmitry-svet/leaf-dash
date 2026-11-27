@@ -11,8 +11,9 @@ LeafSpy code, assets, or branding.
 Single screen (landscape puts live tiles beside a compact energy table —
 one row per window, legend on top). On a tablet in landscape (shortest
 side >= 600 dp, e.g. a 10" 1280x800 tab) the dashboard, load and
-statistics screens fill the screen without scrolling: dashboard = 2x5
-tiles (incl. range) beside the energy table; load = plates and motor on
+statistics screens fill the screen without scrolling: dashboard = SOC
+across the top and 4 rows of 2 tiles beside the energy table (range is
+in the table); load = plates and motor on
 the left, climate over other on the right (bars or dials); statistics =
 week over month on the left half, year on the right. Phones are
 unchanged.
@@ -127,6 +128,9 @@ unchanged.
 - **Tire pressure** (Settings): front and rear pairs in bar from the TPMS
   broadcast `0x385`, refreshed every 5th poll cycle. The full-throttle
   step test moved to the separate Leaf Battery Test app.
+- **CAN 0x60D (BCM)** (Settings): raw bytes plus bytes 0-1 in binary, read
+  each poll cycle only while Settings is open - for finding the headlight
+  bit (OVMS notes: byte 0 bits 0-1, unverified on this car).
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
@@ -207,6 +211,7 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 | `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
 | `0x510` | ambient temp (B7*0.5 - 40 C) |
 | `0x385` | tire pressures FL/FR/RR/RL, B2..B5 / 4 PSI (timed read, every 5th cycle) |
+| `0x60D` | BCM doors/lights, raw only (timed read while Settings is open; headlight bit TBD) |
 | `0x5B3` | gids ((B4&3)<<8 \| B5) - sent only in READY/driving; after 3 misses retried every 20th cycle |
 
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):
