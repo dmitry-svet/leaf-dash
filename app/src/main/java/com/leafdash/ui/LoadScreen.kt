@@ -61,7 +61,7 @@ private val OTH get() = AppTheme.pal.oth
  * Live load: battery power split into motor (traction / regen), climate
  * (A/C + heater) and aux + other, as dials or bars ([bars], toggled by the
  * icon next to the title), plus trip average consumption, remaining kWh and
- * range. Motor and climate cards carry a 5 min chart in the background;
+ * range. Motor and climate cards carry a 10 min chart in the background;
  * every card shows its energy this trip (traction and regen for the motor).
  * While open the caller puts the poller in fast mode; the header shows the
  * measured update interval. Swipe left to go back.
@@ -176,7 +176,9 @@ private fun StyleIcon(bars: Boolean, onClick: () -> Unit) {
 @Composable
 private fun TopPlates(state: DashState) {
     val usable = state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
-    val refEff = (state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
+    // range at this trip's consumption; before 1 km of trip, the lifetime average
+    val refEff = (state.trip.kwhPer100?.takeIf { state.trip.km >= 1.0 }
+        ?: state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Plate(t("Trip avg", "Витрата поїздки"), fmt(state.trip.kwhPer100, 1), t("kWh/100", "кВт·г/100"), MOT, Modifier.weight(1f))
         Plate(t("Remaining", "Залишок"), fmt(usable, 1), t("kWh", "кВт·г"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
@@ -409,7 +411,7 @@ private fun StackBar(
 /** Card with an optional chart drawn behind its content (the card clips it to its shape). */
 @Composable
 private fun ChartCard(
-    chart: (DrawScope.() -> Unit)?, label: String = t("5 min", "5 хв"), modifier: Modifier = Modifier.fillMaxWidth(),
+    chart: (DrawScope.() -> Unit)?, label: String = t("10 min", "10 хв"), modifier: Modifier = Modifier.fillMaxWidth(),
     fill: Boolean = false, content: @Composable () -> Unit,
 ) {
     Card(modifier) { ChartBox(chart, label, Alignment.BottomEnd, if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), content) }
@@ -432,14 +434,14 @@ private fun ChartBox(
 }
 
 /** Chart caption for the motor: window and the auto scale's ends. */
-private fun motorLabel(lo: Double, hi: Double) = t("5 min", "5 хв") + "  ↑" + "%.0f".format(hi) + "  ↓" + "%.0f".format(-lo) + t(" kW", " кВт")
+private fun motorLabel(lo: Double, hi: Double) = t("10 min", "10 хв") + "  ↑" + "%.0f".format(hi) + "  ↓" + "%.0f".format(-lo) + t(" kW", " кВт")
 
-private const val CHART_MS = 300_000L
+private const val CHART_MS = 600_000L
 private const val CHART_GAP_MS = 30_000L
 private val CHART_ALPHA get() = if (AppTheme.effective == ThemeId.LIGHT) 0.25f else 0.35f
 
 /**
- * Stacked area chart of the last 5 min over the whole draw area, [lo]..[hi]
+ * Stacked area chart of the last 10 min over the whole draw area, [lo]..[hi]
  * bottom to top; layer values stack from 0 (a negative first layer goes
  * below 0). Time runs to the newest point at the right edge; gaps over
  * [CHART_GAP_MS] are left empty.

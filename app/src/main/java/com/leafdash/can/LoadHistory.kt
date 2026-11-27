@@ -4,7 +4,7 @@ package com.leafdash.can
 data class LoadPoint(val tMs: Long, val motorKw: Double?, val acKw: Double?, val heaterKw: Double?)
 
 /** Last [windowMs] of load samples for the background charts; in memory only. */
-class LoadHistory(private val windowMs: Long = 300_000) {
+class LoadHistory(private val windowMs: Long = 600_000) {
     private val buf = ArrayDeque<LoadPoint>()
 
     val points: List<LoadPoint> get() = buf.toList()

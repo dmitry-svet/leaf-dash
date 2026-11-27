@@ -44,10 +44,11 @@ unchanged.
   `1261`/`1262` (outside temperature decides when both are 0). VCM motor
   power (`1146`) is traction only (0 under regen), so when the pack power
   minus climate and aux is negative, that remainder shows as motor regen. Plates on top: trip average
-  consumption, remaining kWh and range at the reference efficiency. Each
+  consumption, remaining kWh and range at the trip's consumption (lifetime
+  average until the trip has 1 km). Each
   card shows its energy this trip (motor: traction and regen separately):
   component power integrated per poll sample (gaps > 30 s skipped), reset
-  with the trip, persisted. Motor and climate cards draw the last 5 min
+  with the trip, persisted. Motor and climate cards draw the last 10 min
   as a pale area chart in the background (motor: traction up, regen down,
   0 at a third of the height, auto scale to the window's max traction /
   regen with its ends in the caption, above the bar in the bars view;

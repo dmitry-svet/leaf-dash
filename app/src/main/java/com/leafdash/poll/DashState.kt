@@ -31,7 +31,7 @@ data class DashState(
     val reserveKwh: Double = 0.0,
     /** Energy per load component since the last trip reset. */
     val loadEnergy: com.leafdash.trip.LoadEnergy = com.leafdash.trip.LoadEnergy(),
-    /** Last 5 min of load samples (load screen background charts). */
+    /** Last 10 min of load samples (load screen background charts). */
     val loadHistory: List<com.leafdash.can.LoadPoint> = emptyList(),
     /** Poll cycle counter: increments once per fresh set of readings. */
     val cycle: Int = 0,
