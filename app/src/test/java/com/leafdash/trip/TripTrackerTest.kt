@@ -150,23 +150,38 @@ class TripTrackerTest {
         assertEquals(0.0, t2.lastCharge.km, 1e-9)
     }
 
-    @Test fun regenEnergyIntegratesNegativePackPowerPerTrip() {
+    private fun load(motor: Double?, climate: Double? = null, aux: Double? = null, other: Double? = null) =
+        com.leafdash.can.Load(null, motor, climate, null, null, aux, other)
+
+    @Test fun loadEnergyIntegratesPerTrip() {
         val t = TripTracker()
-        t.onPower(-20.0, 0L)              // first sample: no interval yet
-        t.onPower(-20.0, 9_000L)          // 9 s at 20 kW regen = 0.05 kWh
-        t.onPower(30.0, 18_000L)          // drive: not regen
-        assertEquals(0.05, t.tripRegenKwh, 1e-9)
+        t.onLoad(load(-20.0, 2.0, 0.4, 0.0), 0L)       // first sample: no interval yet
+        t.onLoad(load(-20.0, 2.0, 0.4, 0.0), 9_000L)   // 9 s: regen 20 kW = 0.05 kWh
+        t.onLoad(load(30.0, 2.0, 0.4, 0.2), 18_000L)   // 9 s: traction 30 kW = 0.075 kWh
+        val e = t.loadEnergy
+        assertEquals(0.075, e.tractionKwh, 1e-9)
+        assertEquals(0.05, e.regenKwh, 1e-9)
+        assertEquals(0.01, e.climateKwh, 1e-9)          // 2 kW x 18 s
+        assertEquals(0.002 + 0.0005, e.otherKwh, 1e-9)  // aux 0.4 x 18 s + other 0.2 x 9 s
         t.resetTrip()
-        assertEquals(0.0, t.tripRegenKwh, 1e-9)
+        assertEquals(LoadEnergy(), t.loadEnergy)
     }
 
-    @Test fun regenSkipsLongGapsAndRebaseline() {
-        val t = TripTracker(TripSnapshot(tripRegenKwh = 1.0))
-        t.onPower(-20.0, 0L)
-        t.onPower(-20.0, 120_000L)        // 2 min gap: link stalled, not counted
+    @Test fun loadEnergySkipsUnknownValues() {
+        val t = TripTracker()
+        t.onLoad(load(null), 0L)
+        t.onLoad(load(null), 9_000L)
+        assertEquals(LoadEnergy(), t.loadEnergy)
+    }
+
+    @Test fun loadEnergySkipsLongGapsAndRebaseline() {
+        val start = LoadEnergy(regenKwh = 1.0, climateKwh = 2.0)
+        val t = TripTracker(TripSnapshot(loadEnergy = start))
+        t.onLoad(load(-20.0, 2.0), 0L)
+        t.onLoad(load(-20.0, 2.0), 120_000L)   // 2 min gap: link stalled, not counted
         t.rebaseline()
-        t.onPower(-20.0, 121_000L)        // first after rebaseline: no interval
-        assertEquals(1.0, t.tripRegenKwh, 1e-9)
-        assertEquals(1.0, t.snapshot().tripRegenKwh, 1e-9)
+        t.onLoad(load(-20.0, 2.0), 121_000L)   // first after rebaseline: no interval
+        assertEquals(start, t.loadEnergy)
+        assertEquals(start, t.snapshot().loadEnergy)
     }
 }

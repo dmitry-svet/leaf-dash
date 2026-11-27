@@ -25,17 +25,19 @@ one row per window, legend on top):
   hide the consumption, SOH and Hx lines. All of it is remembered.
 - **Load screen** (swipe right on the dashboard or the small dial icon in
   its header; swipe left to return): live power split from the VCM -
-  motor (traction / regen, with RPM and the regen energy put back into
-  the pack this trip), climate (A/C + heater) and other (aux + the rest: pack power
+  motor (traction / regen, with RPM), climate (A/C + heater) and other (aux + the rest: pack power
   minus motor, climate and aux, i.e. losses and DC/DC), shown as dials or
   bars (icon next to the title switches, remembered). Climate is one fast VCM value (`1151`);
   its A/C / heater split follows the ratio of the VCM estimates
   `1261`/`1262` (outside temperature decides when both are 0). VCM motor
   power (`1146`) is traction only (0 under regen), so when the pack power
   minus climate and aux is negative, that remainder shows as motor regen. Plates on top: trip average
-  consumption, remaining kWh and range at the reference efficiency. Trip
-  regen = negative pack power integrated per poll sample (gaps > 30 s
-  skipped), reset with the trip, persisted. While the screen is
+  consumption, remaining kWh and range at the reference efficiency. Each
+  card shows its energy this trip (motor: traction and regen separately):
+  component power integrated per poll sample (gaps > 30 s skipped), reset
+  with the trip, persisted. Motor and climate cards draw the last 5 min
+  as a pale area chart in the background (motor: traction up, regen down;
+  climate: A/C + heater stacked); kept in memory only. While the screen is
   open the poller runs a fast cycle (LBC `2101` for pack A/V + SOC, speed,
   VCM `1146`/`1151`/`1152`/`1255`; A/C / heater estimates and 12V
   every 5th cycle; no pause) - the header shows the measured update

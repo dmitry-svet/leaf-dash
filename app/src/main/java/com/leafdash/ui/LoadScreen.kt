@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.leafdash.can.Load
+import com.leafdash.can.LoadPoint
 import com.leafdash.poll.DashState
 
 private val MOT = Color(0xFF6650A4)
@@ -57,7 +59,8 @@ private val OTH = Color(0xFF827C88)
  * Live load: battery power split into motor (traction / regen), climate
  * (A/C + heater) and aux + other, as dials or bars ([bars], toggled by the
  * icon next to the title), plus trip average consumption, remaining kWh and
- * range, and the regen energy collected this trip.
+ * range. Motor and climate cards carry a 5 min chart in the background;
+ * every card shows its energy this trip (traction and regen for the motor).
  * While open the caller puts the poller in fast mode; the header shows the
  * measured update interval. Swipe left to go back.
  */
@@ -100,18 +103,21 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             Text(intervalMs?.let { t("%.1f s", "%.1f с").format(it / 1000) } ?: "--", style = MaterialTheme.typography.labelMedium)
         }
         TopPlates(state)
+        val e = state.loadEnergy
+        val climate = listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw)
+        val other = listOf(t("Aux", "Допоміжні") to load.auxKw, t("Other", "Інше") to load.otherKw)
+        val hist = state.loadHistory
+        val climateChart: DrawScope.() -> Unit = {
+            areaChart(hist, 0.0, 5.0, listOf<(LoadPoint) -> Double?>({ it.acKw }, { it.heaterKw })) { i, _ -> if (i == 0) AC else HEAT }
+        }
         if (bars) {
             MotorBars(load, state)
-            StackBar(t("Climate", "Клімат"), 5.0, listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw), AC, HEAT)
-            StackBar(t("Other", "Інше"), 2.0, listOf(t("Aux", "Допоміжні") to load.auxKw, t("Other", "Інше") to load.otherKw), AUX, OTH)
+            StackBar(t("Climate", "Клімат"), 5.0, climate, AC, HEAT, e.climateKwh, climateChart)
+            StackBar(t("Other", "Інше"), 2.0, other, AUX, OTH, e.otherKwh, null)
         } else {
             MotorDial(load, state)
-            Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StackDial(t("Climate", "Клімат"), 5.0, listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw), AC, HEAT, Modifier.weight(1f))
-                    StackDial(t("Other", "Інше"), 2.0, listOf(t("Aux", "Допоміжні") to load.auxKw, t("Other", "Інше") to load.otherKw), AUX, OTH, Modifier.weight(1f))
-                }
-            }
+            DialCard(t("Climate", "Клімат"), 5.0, climate, AC, HEAT, e.climateKwh, climateChart)
+            DialCard(t("Other", "Інше"), 2.0, other, AUX, OTH, e.otherKwh, null)
         }
         val l = state.leaf
         Text(
@@ -181,7 +187,7 @@ private fun MotorDial(load: Load, state: DashState) {
     val lo = -30.0
     val hi = 80.0
     val v = load.motorKw
-    Card(Modifier.fillMaxWidth()) {
+    ChartCard({ motorChart(state.loadHistory, lo, hi) }) {
         Column(Modifier.padding(12.dp)) {
             Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -203,7 +209,8 @@ private fun MotorDial(load: Load, state: DashState) {
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Stat(t("RPM", "Оберти"), rpm(state.leaf.motorRpm), t("rpm", "об/хв"))
-                    Stat(t("Regen, trip", "Рекуп. за поїздку"), fmt(state.tripRegenKwh, 2), t("kWh", "кВт·г"), REG)
+                    Stat(t("Traction, trip", "Тяга за поїздку"), fmt(state.loadEnergy.tractionKwh, 2), t("kWh", "кВт·г"), MOT)
+                    Stat(t("Regen, trip", "Рекуп. за поїздку"), fmt(state.loadEnergy.regenKwh, 2), t("kWh", "кВт·г"), REG)
                 }
             }
         }
@@ -221,32 +228,37 @@ private fun Stat(label: String, value: String, unit: String, color: Color = Mate
     }
 }
 
-/** One dial, two stacked segments from 0; total in the centre, both values below. */
+/** One dial, two stacked segments from 0 (total in the centre); values and trip energy beside it. */
 @Composable
-private fun StackDial(title: String, hi: Double, parts: List<Pair<String, Double?>>, c1: Color, c2: Color, modifier: Modifier) {
+private fun DialCard(title: String, hi: Double, parts: List<Pair<String, Double?>>, c1: Color, c2: Color, tripKwh: Double, chart: (DrawScope.() -> Unit)?) {
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val total = parts.mapNotNull { it.second }.takeIf { it.isNotEmpty() }?.sum()
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val w = size.minDimension * 0.1f
-                arc(track, ARC_START, ARC_SWEEP, w)
-                var acc = 0.0
-                for ((i, p) in parts.withIndex()) {
-                    val v = p.second ?: 0.0
-                    val a0 = (acc / hi).coerceAtMost(1.0)
-                    val a1 = ((acc + v) / hi).coerceAtMost(1.0)
-                    if (a1 > a0) arc(if (i == 0) c1 else c2, ARC_START + ARC_SWEEP * a0.toFloat(), ARC_SWEEP * (a1 - a0).toFloat(), w)
-                    acc += v
+    ChartCard(chart) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val w = size.minDimension * 0.1f
+                    arc(track, ARC_START, ARC_SWEEP, w)
+                    var acc = 0.0
+                    for ((i, p) in parts.withIndex()) {
+                        val v = p.second ?: 0.0
+                        val a0 = (acc / hi).coerceAtMost(1.0)
+                        val a1 = ((acc + v) / hi).coerceAtMost(1.0)
+                        if (a1 > a0) arc(if (i == 0) c1 else c2, ARC_START + ARC_SWEEP * a0.toFloat(), ARC_SWEEP * (a1 - a0).toFloat(), w)
+                        acc += v
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(fmt(total, 2), fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                    Text(t("kW", "кВт"), style = MaterialTheme.typography.labelMedium)
                 }
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(fmt(total, 2), fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                Text(t("kW", "кВт"), style = MaterialTheme.typography.labelMedium)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                for ((i, p) in parts.withIndex()) Legend(p.first, p.second, if (i == 0) c1 else c2, 26)
+                Stat(t("This trip", "За поїздку"), fmt(tripKwh, 2), t("kWh", "кВт·г"))
             }
         }
-        for ((i, p) in parts.withIndex()) Legend(p.first, p.second, if (i == 0) c1 else c2, 26)
     }
 }
 
@@ -267,7 +279,7 @@ private fun MotorBars(load: Load, state: DashState) {
     val lo = -30.0
     val hi = 80.0
     val v = load.motorKw
-    Card(Modifier.fillMaxWidth()) {
+    ChartCard({ motorChart(state.loadHistory, lo, hi) }) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.Bottom) {
@@ -279,7 +291,9 @@ private fun MotorBars(load: Load, state: DashState) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text(rpm(state.leaf.motorRpm), fontSize = 34.sp, fontWeight = FontWeight.Bold)
                     Text(t("rpm", "об/хв"), style = MaterialTheme.typography.labelMedium)
-                    Text(fmt(state.tripRegenKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = REG)
+                    Text(fmt(state.loadEnergy.tractionKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MOT)
+                    Text(t("kWh traction, trip", "кВт·г тяга за поїздку"), style = MaterialTheme.typography.labelMedium, color = MOT)
+                    Text(fmt(state.loadEnergy.regenKwh, 2), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = REG)
                     Text(t("kWh regen, trip", "кВт·г рекуп. за поїздку"), style = MaterialTheme.typography.labelMedium, color = REG)
                 }
             }
@@ -304,10 +318,10 @@ private fun MotorBars(load: Load, state: DashState) {
 
 /** Two values stacked in one bar from 0 to [hi]; total top right, values below. */
 @Composable
-private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?>>, c1: Color, c2: Color) {
+private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?>>, c1: Color, c2: Color, tripKwh: Double, chart: (DrawScope.() -> Unit)?) {
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val total = parts.mapNotNull { it.second }.takeIf { it.isNotEmpty() }?.sum()
-    Card(Modifier.fillMaxWidth()) {
+    ChartCard(chart) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -333,10 +347,65 @@ private fun StackBar(title: String, hi: Double, parts: List<Pair<String, Double?
                 for ((i, p) in parts.withIndex()) {
                     Box(Modifier.weight(1f)) { Legend(p.first, p.second, if (i == 0) c1 else c2, 30) }
                 }
+                Box(Modifier.weight(1f)) { Stat(t("This trip", "За поїздку"), fmt(tripKwh, 2), t("kWh", "кВт·г")) }
             }
         }
     }
 }
+
+/** Card with an optional chart drawn behind its content (the card clips it to its shape). */
+@Composable
+private fun ChartCard(chart: (DrawScope.() -> Unit)?, content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Box {
+            if (chart != null) {
+                Canvas(Modifier.matchParentSize()) { chart() }
+                Text(t("5 min", "5 хв"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 4.dp))
+            }
+            content()
+        }
+    }
+}
+
+private const val CHART_MS = 300_000L
+private const val CHART_GAP_MS = 30_000L
+private const val CHART_ALPHA = 0.25f
+
+/**
+ * Stacked area chart of the last 5 min over the whole draw area, [lo]..[hi]
+ * bottom to top; layer values stack from 0 (a negative first layer goes
+ * below 0). Time runs to the newest point at the right edge; gaps over
+ * [CHART_GAP_MS] are left empty.
+ */
+private fun DrawScope.areaChart(pts: List<LoadPoint>, lo: Double, hi: Double, layers: List<(LoadPoint) -> Double?>, color: (Int, Double) -> Color) {
+    if (pts.size < 2) return
+    val end = pts.last().tMs
+    fun x(t: Long) = size.width * (1f - (end - t).toFloat() / CHART_MS)
+    fun y(v: Double) = size.height * (1f - ((v.coerceIn(lo, hi) - lo) / (hi - lo)).toFloat())
+    for (k in 0 until pts.size - 1) {
+        val p = pts[k]
+        val q = pts[k + 1]
+        if (q.tMs - p.tMs > CHART_GAP_MS) continue
+        var accP = 0.0
+        var accQ = 0.0
+        for ((i, f) in layers.withIndex()) {
+            val a = f(p) ?: 0.0
+            val b = f(q) ?: 0.0
+            val path = Path().apply {
+                moveTo(x(p.tMs), y(accP)); lineTo(x(q.tMs), y(accQ))
+                lineTo(x(q.tMs), y(accQ + b)); lineTo(x(p.tMs), y(accP + a)); close()
+            }
+            drawPath(path, color(i, a).copy(alpha = CHART_ALPHA))
+            accP += a
+            accQ += b
+        }
+    }
+    if (lo < 0) drawLine(Color.Gray.copy(alpha = 0.5f), Offset(0f, y(0.0)), Offset(size.width, y(0.0)), strokeWidth = 2f)
+}
+
+private fun DrawScope.motorChart(pts: List<LoadPoint>, lo: Double, hi: Double) =
+    areaChart(pts, lo, hi, listOf<(LoadPoint) -> Double?>({ it.motorKw })) { _, v -> if (v < 0) REG else MOT }
 
 private fun rpm(v: Int?) = v?.let { "%,d".format(it).replace(',', ' ') } ?: "--"
 
