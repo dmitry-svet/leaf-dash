@@ -54,7 +54,9 @@ unchanged.
   as a pale area chart in the background (motor: traction up, regen down,
   0 at a third of the height, auto scale to the window's max traction /
   regen with its ends in the caption, above the bar in the bars view;
-  climate: A/C + heater stacked, 0-5 kW); kept in memory only. While the screen is
+  climate: A/C + heater stacked, 0-5 kW); kept in memory only. Under the
+  motor bar / dial: hottest battery sensor (LBC group 4, else 0x5C0) with a
+  thermometer, colored <=0 C blue, <25 green, <38 yellow, >=38 red. While the screen is
   open the poller runs a fast cycle (LBC `2101` for pack A/V + SOC, speed,
   VCM `1146`/`1151`/`1152`/`1255`; A/C / heater estimates and 12V
   every 5th cycle; no pause) - the header shows the measured update

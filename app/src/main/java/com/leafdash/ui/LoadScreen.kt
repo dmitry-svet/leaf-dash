@@ -239,6 +239,7 @@ private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifie
                     Stat(t("Regen, trip", "Рекуп. за поїздку"), fmt(state.loadEnergy.regenKwh, 2), t("kWh", "кВт·г"), REG, big)
                 }
             }
+            BatteryTemp(state, big)
         }
     }
 }
@@ -364,7 +365,27 @@ private fun MotorBars(load: Load, state: DashState, modifier: Modifier = Modifie
                 Text("← " + t("regen", "рекуперація") + "  −30", style = MaterialTheme.typography.labelSmall, color = REG, modifier = Modifier.weight(1f))
                 Text("80  " + t("traction", "тяга") + " →", style = MaterialTheme.typography.labelSmall, color = MOT)
             }
+            BatteryTemp(state, big)
         }
+    }
+}
+
+/** Hottest battery sensor (LBC), else the 0x5C0 pack temp: thermometer + degrees, colored by band. */
+@Composable
+private fun BatteryTemp(state: DashState, big: Boolean) {
+    val c = state.leaf.batteryTempsC.maxOrNull() ?: state.leaf.batteryTempC
+    val col = c?.let { AppTheme.pal.temp(it) } ?: MaterialTheme.colorScheme.onSurfaceVariant
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(Modifier.size(width = 16.dp, height = if (big) 32.dp else 26.dp)) {
+            val stem = size.width * 0.4f
+            val bulb = size.width / 2
+            val cx = size.width / 2
+            val sw = size.width * 0.12f
+            drawRoundRect(col, Offset(cx - stem / 2, sw / 2), Size(stem, size.height - bulb * 2), CornerRadius(stem / 2), style = Stroke(sw))
+            drawRect(col, Offset(cx - stem / 4, size.height * 0.35f), Size(stem / 2, size.height * 0.4f))
+            drawCircle(col, bulb, Offset(cx, size.height - bulb))
+        }
+        Text(c?.let { "%.0f°C".format(it) } ?: "--", fontSize = if (big) 36.sp else 28.sp, fontWeight = FontWeight.Bold, color = col)
     }
 }
 

@@ -96,3 +96,20 @@ private val SCHEMES = mapOf(
     ThemeId.OLED to dark(0x000000, 0x151515, 0xFFFFFF, 0x9E9E9E, 0x333333, 0xB39DFF, 0x000000, 0x2A2A2A),
     ThemeId.NIGHT to dark(0x000000, 0x0F0E0C, 0xE8C98F, 0x8C7B5E, 0x2A261F, 0xE0A458, 0x000000, 0x2A261F),
 )
+
+/** Battery temperature color band: <=0 cold, below 25 ok, below 38 warm, else hot (degrees C). */
+enum class TempBand { COLD, OK, WARM, HOT }
+
+fun tempBand(c: Double): TempBand = when {
+    c <= 0.0 -> TempBand.COLD
+    c < 25.0 -> TempBand.OK
+    c < 38.0 -> TempBand.WARM
+    else -> TempBand.HOT
+}
+
+fun Pal.temp(c: Double): Color = when (tempBand(c)) {
+    TempBand.COLD -> ac
+    TempBand.OK -> ok
+    TempBand.WARM -> warn
+    TempBand.HOT -> danger
+}
