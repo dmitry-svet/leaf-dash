@@ -27,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +61,8 @@ fun SettingsScreen(
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
     onSetLang: (Boolean) -> Unit,
+    onSetTheme: (ThemeId) -> Unit,
+    onSetThemeAuto: (Boolean) -> Unit,
     update: DashboardViewModel.UpdateState,
     onCheckUpdate: () -> Unit,
     dataLogPath: String,
@@ -84,6 +85,27 @@ fun SettingsScreen(
         ) {
             Text(t("Language", "Мова"), style = MaterialTheme.typography.titleMedium)
             LangDropdown(onSetLang)
+        }
+
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(t("Theme", "Тема"), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ThemeDropdown(onSetTheme)
+                Checkbox(checked = AppTheme.auto, onCheckedChange = onSetThemeAuto)
+                Text(t("Auto", "Авто"))
+            }
+        }
+        if (AppTheme.auto) {
+            Text(
+                t("Auto: light by day, the chosen dark theme when the system is dark",
+                    "Авто: вдень світла, коли система темна - вибрана темна тема"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Row(
@@ -204,7 +226,7 @@ fun SettingsScreen(
             OutlinedButton(onClick = { onSetDataLog(!dataLogEnabled) }, modifier = Modifier.weight(1f)) {
                 Text(
                     if (dataLogEnabled) t("\u25A0 Stop log", "\u25A0 Стоп лог") else t("\u25CF Start log", "\u25CF Старт лог"),
-                    color = if (dataLogEnabled) Color(0xFFC62828) else MaterialTheme.colorScheme.primary,
+                    color = if (dataLogEnabled) AppTheme.pal.danger else MaterialTheme.colorScheme.primary,
                 )
             }
             OutlinedButton(onClick = onSendDataLog, modifier = Modifier.weight(1f)) { Text(t("Send log", "Надіслати лог")) }
@@ -299,6 +321,28 @@ private fun LangDropdown(onSetLang: (Boolean) -> Unit) {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text("English") }, onClick = { onSetLang(false); open = false })
             DropdownMenuItem(text = { Text("Українська") }, onClick = { onSetLang(true); open = false })
+        }
+    }
+}
+
+private fun themeName(id: ThemeId) = when (id) {
+    ThemeId.LIGHT -> t("Light", "Світла")
+    ThemeId.DARK -> t("Dark", "Темна")
+    ThemeId.OLED -> "OLED"
+    ThemeId.NIGHT -> t("Night", "Нічна")
+}
+
+@Composable
+private fun ThemeDropdown(onSetTheme: (ThemeId) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }) {
+            Text(themeName(AppTheme.theme) + " ▾")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            ThemeId.entries.forEach { id ->
+                DropdownMenuItem(text = { Text(themeName(id)) }, onClick = { onSetTheme(id); open = false })
+            }
         }
     }
 }

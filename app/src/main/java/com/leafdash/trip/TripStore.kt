@@ -85,6 +85,22 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[LANG_UK] = uk }
     }
 
+    /** UI theme; an unknown stored name (older/newer app) falls back to LIGHT. */
+    suspend fun loadTheme(): com.leafdash.ui.ThemeId =
+        context.tripDataStore.data.first()[THEME]
+            ?.let { n -> com.leafdash.ui.ThemeId.entries.firstOrNull { it.name == n } }
+            ?: com.leafdash.ui.ThemeId.LIGHT
+
+    suspend fun saveTheme(theme: com.leafdash.ui.ThemeId) {
+        context.tripDataStore.edit { it[THEME] = theme.name }
+    }
+
+    suspend fun loadThemeAuto(): Boolean = context.tripDataStore.data.first()[THEME_AUTO] ?: false
+
+    suspend fun saveThemeAuto(auto: Boolean) {
+        context.tripDataStore.edit { it[THEME_AUTO] = auto }
+    }
+
     suspend fun loadStatsView(): com.leafdash.stats.StatsView {
         val p = context.tripDataStore.data.first()
         val d = com.leafdash.stats.StatsView()
@@ -172,6 +188,8 @@ class TripStore(private val context: Context) {
         val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val LANG_UK = booleanPreferencesKey("lang_uk")
+        val THEME = stringPreferencesKey("theme")
+        val THEME_AUTO = booleanPreferencesKey("theme_auto")
         val UPDATE_CHECKED_MS = longPreferencesKey("update_checked_ms")
         val UPDATE_NEWEST = stringPreferencesKey("update_newest")
         val STATS_BARS_KWH = booleanPreferencesKey("stats_bars_kwh")

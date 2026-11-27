@@ -49,9 +49,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // the activity is recreated when the system night mode flips
+        com.leafdash.ui.AppTheme.systemDark = (resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         setContent {
-            MaterialTheme {
-                Surface { App(vm) } // uses platform theme colors
+            MaterialTheme(colorScheme = com.leafdash.ui.AppTheme.scheme) {
+                Surface { App(vm) }
             }
         }
     }
@@ -247,6 +250,8 @@ class MainActivity : ComponentActivity() {
                 dataLogEnabled = dataLogOn,
                 onSetDataLog = { vm.setDataLog(it) },
                 onSetLang = { vm.setLangUk(it) },
+                onSetTheme = { vm.setTheme(it) },
+                onSetThemeAuto = { vm.setThemeAuto(it) },
                 update = update,
                 onCheckUpdate = { vm.checkUpdate() },
                 dataLogPath = vm.dataLogPath,

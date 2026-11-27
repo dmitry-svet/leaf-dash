@@ -114,6 +114,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _reserveKwh.value = tripStore.loadReserveKwh()
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             Lang.uk = tripStore.loadLangUk()
+            AppTheme.theme = tripStore.loadTheme()
+            AppTheme.auto = tripStore.loadThemeAuto()
             _statsView.value = tripStore.loadStatsView()
             _loadBars.value = tripStore.loadLoadBars()
         }
@@ -350,6 +352,16 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun setLangUk(uk: Boolean) {
         Lang.uk = uk
         viewModelScope.launch { tripStore.saveLangUk(uk) }
+    }
+
+    fun setTheme(theme: ThemeId) {
+        AppTheme.theme = theme
+        viewModelScope.launch { tripStore.saveTheme(theme) }
+    }
+
+    fun setThemeAuto(auto: Boolean) {
+        AppTheme.auto = auto
+        viewModelScope.launch { tripStore.saveThemeAuto(auto) }
     }
 
     fun setDataLog(on: Boolean) {

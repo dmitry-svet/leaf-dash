@@ -20,6 +20,11 @@ unchanged.
 - **Live**: SOC %, kWh remaining, SOH %, pack Ah/Hx, speed, pack volts,
   pack amps, battery + ambient temp, odometer (km/mi toggle).
 - **UI language**: English or Ukrainian, switched in Settings (persisted).
+- **Theme** (Settings): Light, Dark (Material), OLED (true black) or Night
+  (black with warm amber text, low glare). **Auto** follows the system:
+  light by day, the chosen dark theme when the system is dark (Dark if
+  Light is chosen). Chart and status colors have a palette per theme
+  (`ui/Theme.kt`).
 - **Statistics screen** (swipe left on the dashboard, swipe right to return, or Settings →
   Statistics): totals (km, kWh, consumption, trips) and a bar chart for the last
   7 days and 30 days (per day) and the last 52 weeks (per Monday-based

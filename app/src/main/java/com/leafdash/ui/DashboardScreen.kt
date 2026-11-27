@@ -88,9 +88,9 @@ fun DashboardScreen(
             else -> t("Disconnected", "Відключено")
         }
         val statusColor = when {
-            state.connecting -> Color(0xFFB58900)   // amber
-            state.connected -> Color(0xFF2E7D32)    // green
-            else -> Color(0xFFC62828)               // red
+            state.connecting -> AppTheme.pal.warn
+            state.connected -> AppTheme.pal.ok
+            else -> AppTheme.pal.danger
         }
         Row(
             Modifier.fillMaxWidth(),
@@ -409,7 +409,7 @@ private fun Tile(label: String, value: String, modifier: Modifier = Modifier, bi
 @Composable
 private fun CellsTile(minV: Double?, maxV: Double?, modifier: Modifier = Modifier, style: TextStyle? = null) {
     val spreadMv = if (minV != null && maxV != null) (maxV - minV) * 1000.0 else null
-    val danger = Color(0xFFC62828)
+    val danger = AppTheme.pal.danger
     Card(modifier) {
         Column(
             Modifier.fillMaxHeight().padding(10.dp),

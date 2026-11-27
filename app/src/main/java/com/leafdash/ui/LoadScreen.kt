@@ -49,12 +49,12 @@ import com.leafdash.can.LoadPoint
 import com.leafdash.can.motorChartRange
 import com.leafdash.poll.DashState
 
-private val MOT = Color(0xFF6650A4)
-private val REG = Color(0xFF2E8C46)
-private val AC = Color(0xFF1E78C8)
-private val HEAT = Color(0xFFD95A1A)
-private val AUX = Color(0xFF0F8A8A)
-private val OTH = Color(0xFF827C88)
+private val MOT get() = AppTheme.pal.mot
+private val REG get() = AppTheme.pal.reg
+private val AC get() = AppTheme.pal.ac
+private val HEAT get() = AppTheme.pal.heat
+private val AUX get() = AppTheme.pal.aux
+private val OTH get() = AppTheme.pal.oth
 
 
 /**
@@ -102,7 +102,7 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             Text(t("Load", "Навантаження"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             StyleIcon(bars) { onBars(!bars) }
             Spacer(Modifier.weight(1f))
-            Box(Modifier.size(8.dp).background(if (state.connected) REG else Color(0xFFC62828), CircleShape))
+            Box(Modifier.size(8.dp).background(if (state.connected) REG else AppTheme.pal.danger, CircleShape))
             Text(intervalMs?.let { t("%.1f s", "%.1f с").format(it / 1000) } ?: "--", style = MaterialTheme.typography.labelMedium)
         }
         if (!tab) TopPlates(state)
@@ -206,6 +206,7 @@ private fun DrawScope.arc(color: Color, from: Float, sweep: Float, w: Float) {
 @Composable
 private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifier.fillMaxWidth(), big: Boolean = false) {
     val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val tick = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     val lo = -30.0
     val hi = 80.0
     val v = load.motorKw
@@ -223,7 +224,7 @@ private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifie
                             if (v >= 0) arc(MOT, ang(0.0), ang(v) - ang(0.0), w)
                             else arc(REG, ang(v), ang(0.0) - ang(v), w)
                         }
-                        arc(Color.Black.copy(alpha = 0.6f), ang(0.0) - 0.7f, 1.4f, w * 1.3f)   // zero tick
+                        arc(tick, ang(0.0) - 0.7f, 1.4f, w * 1.3f)   // zero tick
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(fmt(v, 1), fontSize = if (big) 72.sp else 52.sp, fontWeight = FontWeight.Bold, color = if ((v ?: 0.0) < 0) REG else MOT)
@@ -435,7 +436,7 @@ private fun motorLabel(lo: Double, hi: Double) = t("5 min", "5 хв") + "  ↑" 
 
 private const val CHART_MS = 300_000L
 private const val CHART_GAP_MS = 30_000L
-private const val CHART_ALPHA = 0.25f
+private val CHART_ALPHA get() = if (AppTheme.effective == ThemeId.LIGHT) 0.25f else 0.35f
 
 /**
  * Stacked area chart of the last 5 min over the whole draw area, [lo]..[hi]

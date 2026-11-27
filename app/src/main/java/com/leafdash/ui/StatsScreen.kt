@@ -345,9 +345,9 @@ private fun spread(labels: List<Pair<TextLayoutResult, Float>>, height: Float): 
     return ys
 }
 
-private val CON_COLOR = Color(0xFFC8285A)
-private val SOH_COLOR = Color(0xFFD9731A)
-private val HX_COLOR = Color(0xFF0F8A8A)
+private val CON_COLOR get() = AppTheme.pal.con
+private val SOH_COLOR get() = AppTheme.pal.soh
+private val HX_COLOR get() = AppTheme.pal.hx
 
 /** An overlay line: non-null [values] stretched over [lo]..[hi] into the band [b0]..[b1] of the chart height. */
 private class Series(val name: String, values: List<Double?>, val color: Color, private val b0: Float, private val b1: Float) {
