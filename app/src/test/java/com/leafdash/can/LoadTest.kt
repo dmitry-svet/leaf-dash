@@ -68,4 +68,22 @@ class LoadTest {
         val l = Load.of(base.copy(packVolts = 400.0, packAmps = 2.5, motorPowerW = 0))
         assertEquals(-1.5, l.motorKw!!, 1e-9)
     }
+
+    @Test fun parkedSensorOffsetIsNotRegen() {
+        // car ON, not READY, parked: LBC reads -2 A at 389 V with no real current (car, v1.9)
+        val l = Load.of(LeafState(packVolts = 389.2, packAmps = -2.0, speedKmh = 0.0, motorPowerW = 0))
+        assertEquals(0.0, l.batteryKw!!, 1e-9)
+        assertEquals(0.0, l.motorKw!!, 1e-9)
+    }
+
+    @Test fun parkedClimateDrawIsNotRegen() {
+        // parked with climate on: pack below climate + aux is sensor error, not regen
+        val l = Load.of(base.copy(packAmps = 4.0, speedKmh = 0.0, motorPowerW = 0))
+        assertEquals(1.4, l.batteryKw!!, 1e-9)
+        assertEquals(0.0, l.motorKw!!, 1e-9)
+    }
+
+    @Test fun parkedLargeCurrentStays() {
+        assertEquals(-7.0, Load.of(base.copy(packAmps = -20.0, speedKmh = 0.0)).batteryKw!!, 1e-9)
+    }
 }

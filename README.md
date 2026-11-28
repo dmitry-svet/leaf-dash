@@ -45,7 +45,9 @@ unchanged.
   its A/C / heater split follows the ratio of the VCM estimates
   `1261`/`1262` (outside temperature decides when both are 0). VCM motor
   power (`1146`) is traction only (0 under regen), so when the pack power
-  minus climate and aux is negative, that remainder shows as motor regen. Plates on top: trip average
+  minus climate and aux is negative, that remainder shows as motor regen
+  (only while moving; parked, a pack current within +-3 A reads 0 - the LBC
+  sensor shows about -2 A with no real current). Plates on top: trip average
   consumption, remaining kWh and range at the trip's consumption (lifetime
   average until the trip has 1 km). Each
   card shows its energy this trip (motor: traction and regen separately):
