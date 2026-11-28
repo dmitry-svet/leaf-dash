@@ -35,6 +35,7 @@ class TripStore(private val context: Context) {
                 regenKwh = p[TR_REGEN] ?: 0.0,
                 climateKwh = p[TR_CLIMATE] ?: 0.0,
                 otherKwh = p[TR_OTHER] ?: 0.0,
+                batteryKwh = p[TR_BATTERY] ?: 0.0,
             ),
         )
     }
@@ -174,6 +175,7 @@ class TripStore(private val context: Context) {
             p[TR_REGEN] = snap.loadEnergy.regenKwh
             p[TR_CLIMATE] = snap.loadEnergy.climateKwh
             p[TR_OTHER] = snap.loadEnergy.otherKwh
+            p[TR_BATTERY] = snap.loadEnergy.batteryKwh
             p[SCHEMA_VER] = SCHEMA_CURRENT
         }
     }
@@ -184,6 +186,7 @@ class TripStore(private val context: Context) {
         val TR_REGEN = doublePreferencesKey("trip_regen_kwh")
         val TR_CLIMATE = doublePreferencesKey("trip_climate_kwh")
         val TR_OTHER = doublePreferencesKey("trip_other_kwh")
+        val TR_BATTERY = doublePreferencesKey("trip_battery_kwh")
         val LC_KWH = doublePreferencesKey("lc_kwh")
         val TR_KM = doublePreferencesKey("tr_km")
         val TR_KWH = doublePreferencesKey("tr_kwh")

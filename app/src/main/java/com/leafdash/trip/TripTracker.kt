@@ -113,6 +113,7 @@ class TripTracker(snapshot: TripSnapshot = TripSnapshot()) {
             regenKwh = e.regenKwh + (-m).coerceAtLeast(0.0) * h,
             climateKwh = e.climateKwh + (load.climateKw ?: 0.0) * h,
             otherKwh = e.otherKwh + ((load.auxKw ?: 0.0) + (load.otherKw ?: 0.0)) * h,
+            batteryKwh = e.batteryKwh + (load.batteryKw ?: 0.0) * h,
         )
     }
 

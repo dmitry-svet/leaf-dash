@@ -184,4 +184,16 @@ class TripTrackerTest {
         assertEquals(start, t.loadEnergy)
         assertEquals(start, t.snapshot().loadEnergy)
     }
+
+    @Test fun batteryEnergyIsNetPackPowerPerTrip() {
+        val t = TripTracker()
+        val pack = { kw: Double -> com.leafdash.can.Load(kw, null, null, null, null, null, null) }
+        t.onLoad(pack(10.0), 0L)
+        t.onLoad(pack(20.0), 9_000L)    // 9 s at 20 kW = 0.05 kWh
+        t.onLoad(pack(-10.0), 18_000L)  // 9 s regen at 10 kW = -0.025 kWh
+        assertEquals(0.025, t.loadEnergy.batteryKwh, 1e-9)
+        assertEquals(0.025, TripTracker(t.snapshot()).loadEnergy.batteryKwh, 1e-9)
+        t.resetTrip()
+        assertEquals(0.0, t.loadEnergy.batteryKwh, 1e-9)
+    }
 }

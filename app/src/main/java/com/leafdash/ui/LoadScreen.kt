@@ -148,7 +148,8 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onRes
         val l = state.leaf
         Text(
             t("Battery ", "Батарея ") + fmt(load.batteryKw, 1) + t(" kW · ", " кВт · ") + fmt(l.packAmps, 1) + t(" A · ", " А · ") +
-                fmt(l.packVolts, 1) + t(" V · 12V ", " В · 12V ") + fmt(l.aux12V, 1) + t(" V", " В"),
+                fmt(l.packVolts, 1) + t(" V · 12V ", " В · 12V ") + fmt(l.aux12V, 1) + t(" V", " В") +
+                t(" · trip ", " · за поїздку ") + fmt(e.batteryKwh, 2) + t(" kWh", " кВт·г"),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -260,7 +261,6 @@ private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifie
     val (cLo, cHi) = motorChartRange(state.loadHistory)
     ChartCard({ motorChart(state.loadHistory, cLo, cHi) }, motorLabel(cLo, cHi), modifier, fill = big) {
         Column(Modifier.padding(12.dp).then(if (big) Modifier.fillMaxHeight() else Modifier)) {
-            Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Row(Modifier.then(if (big) Modifier.weight(1f) else Modifier), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1.3f).aspectRatio(1f), contentAlignment = Alignment.Center) {
                     Canvas(Modifier.fillMaxSize()) {
@@ -273,10 +273,13 @@ private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifie
                         }
                         arc(tick, ang(0.0) - 0.7f, 1.4f, w * 1.3f)   // zero tick
                     }
+                    // title inside the dial and temp in the arc's bottom gap, like the other cards: no extra rows
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(fmt(v, 1), fontSize = if (big) 72.sp else 52.sp, fontWeight = FontWeight.Bold, color = if ((v ?: 0.0) < 0) REG else MOT)
+                        Text(t("Motor", "Мотор"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(fmt(v, 1), fontSize = if (big) 72.sp else 46.sp, fontWeight = FontWeight.Bold, color = if ((v ?: 0.0) < 0) REG else MOT)
                         Text(t("kW", "кВт"), style = MaterialTheme.typography.titleMedium)
                     }
+                    Box(Modifier.align(Alignment.BottomCenter)) { BatteryTemp(state, big) }
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(if (big) 20.dp else 10.dp)) {
                     Stat(t("RPM", "Оберти"), rpm(state.leaf.motorRpm), t("rpm", "об/хв"), big = big)
@@ -284,7 +287,6 @@ private fun MotorDial(load: Load, state: DashState, modifier: Modifier = Modifie
                     Stat(t("Regen, trip", "Рекуп. за поїздку"), fmt(state.loadEnergy.regenKwh, 2), t("kWh", "кВт·г"), REG, big)
                 }
             }
-            BatteryTemp(state, big)
         }
     }
 }
