@@ -249,7 +249,24 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         saveCurrentTrip()
     }
 
-    fun resetTrip() = tracker?.resetTrip()
+    /**
+     * Reset the trip window and per-component load energy. Shown and saved at
+     * once: the poll loop that copies tracker values into the state only runs
+     * while connected, and with no tracker yet (not connected since launch)
+     * the stored snapshot is reset instead.
+     */
+    fun resetTrip() {
+        val existing = tracker
+        existing?.let { showTrip(it.apply { resetTrip() }) }
+        viewModelScope.launch {
+            val t = existing ?: TripTracker(tripStore.load()).also { it.resetTrip(); showTrip(it) }
+            tripStore.save(t.snapshot())
+        }
+    }
+
+    private fun showTrip(t: TripTracker) {
+        _state.value = _state.value.copy(trip = t.trip.copy(), loadEnergy = t.loadEnergy)
+    }
 
     private fun logTripSample(ps: DashState, distKm: Double, session: Int) {
         logDataRow(ps)     // every cycle, even when the trip log skips this one
