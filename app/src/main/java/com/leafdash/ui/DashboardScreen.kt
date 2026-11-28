@@ -131,6 +131,7 @@ fun DashboardScreen(
                 modifier = Modifier.clickable { openUrl(ctx, UpdateCheck.apkUrl(updateVersion)) },
             )
         }
+        TireAlertBanner(state)
         // live tiles + energy economy: side by side in landscape, stacked in
         // portrait
         val landscape =

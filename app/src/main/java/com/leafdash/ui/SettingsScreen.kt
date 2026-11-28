@@ -57,8 +57,8 @@ fun SettingsScreen(
     onScanLeafSpy: () -> Unit,
     onOpenStats: () -> Unit,
     tiresPsi: List<Double?>,
-    bcm60D: String?,
-    connected: Boolean,
+    tireMinBar: Double,
+    onSetTireMinBar: (Double) -> Unit,
     onSendDataLog: () -> Unit,
     dataLogEnabled: Boolean,
     onSetDataLog: (Boolean) -> Unit,
@@ -149,6 +149,35 @@ fun SettingsScreen(
         OutlinedButton(onClick = onOpenTripLog, modifier = Modifier.fillMaxWidth()) {
             Text(t("Trip log", "Журнал поїздок"))
         }
+        Text(t("Tire pressure, bar", "Тиск у шинах, бар"), style = MaterialTheme.typography.titleMedium)
+        // poller order: FL, FR, RR, RL
+        for ((rowLabel, idx) in listOf(t("Front", "Передні") to listOf(0, 1), t("Rear", "Задні") to listOf(3, 2))) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(rowLabel, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                for (i in idx) {
+                    val psi = tiresPsi.getOrNull(i)
+                    Text(
+                        if (psi == null) "--" else "%.2f".format(psi * 0.0689476),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+        Text(t("From the car's TPMS (CAN 0x385), read every 5th poll cycle (~25 s) on a live connection.",
+            "З TPMS авто (CAN 0x385), читається кожен 5-й цикл (~25 с) при живому з'єднанні."), style = MaterialTheme.typography.bodySmall)
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(t("Alert below, bar", "Алерт нижче, бар"), style = MaterialTheme.typography.bodyMedium)
+            TireMinDropdown(tireMinBar, onSetTireMinBar)
+        }
+        Text(t("Alert on screen when a tire is below this or tires differ by 0.2 bar or more.",
+            "Алерт на екрані, коли шина нижче цього або різниця між шинами 0.2 бар і більше."), style = MaterialTheme.typography.bodySmall)
+
         Text(t("LeafSpy trip log import", "Імпорт поїздок з LeafSpy"), style = MaterialTheme.typography.titleMedium)
         Text(
             when {
@@ -187,43 +216,6 @@ fun SettingsScreen(
             ),
             style = MaterialTheme.typography.bodySmall,
         )
-        Text(t("Tire pressure, bar", "Тиск у шинах, бар"), style = MaterialTheme.typography.titleMedium)
-        // poller order: FL, FR, RR, RL
-        for ((rowLabel, idx) in listOf(t("Front", "Передні") to listOf(0, 1), t("Rear", "Задні") to listOf(3, 2))) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(rowLabel, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                for (i in idx) {
-                    val psi = tiresPsi.getOrNull(i)
-                    Text(
-                        if (psi == null) "--" else "%.2f".format(psi * 0.0689476),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-        Text(t("From the car's TPMS (CAN 0x385), read every 5th poll cycle (~25 s) on a live connection.",
-            "З TPMS авто (CAN 0x385), читається кожен 5-й цикл (~25 с) при живому з'єднанні."), style = MaterialTheme.typography.bodySmall)
-
-        // headlight bit hunt: raw BCM 0x60D, bytes 0-1 also in binary
-        Text("CAN 0x60D (BCM)", style = MaterialTheme.typography.titleMedium)
-        Text(
-            bcm60D ?: if (connected) t("no frame", "кадру немає") else t("not connected", "не підключено"),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-        )
-        bcm60D?.split(" ")?.take(2)?.forEachIndexed { i, h ->
-            Text(
-                "B$i: " + (h.toIntOrNull(16)?.let { Integer.toBinaryString(it).padStart(8, '0').chunked(4).joinToString(" ") } ?: "--"),
-                style = MaterialTheme.typography.titleMedium,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            )
-        }
-        Text(t("Read each poll cycle while Settings is open. B0 bit 2 = parking lights, B0 bit 1 = low beam, B1 bit 3 = high beam.",
-            "Читається кожен цикл, поки відкриті налаштування. B0 біт 2 = габарити, B0 біт 1 = ближнє, B1 біт 3 = дальнє."), style = MaterialTheme.typography.bodySmall)
-
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -389,6 +381,21 @@ private fun AutoDropdown(onSet: (AutoMode) -> Unit) {
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             AutoMode.entries.forEach { m ->
                 DropdownMenuItem(text = { Text(autoName(m)) }, onClick = { onSet(m); open = false })
+            }
+        }
+    }
+}
+
+@Composable
+private fun TireMinDropdown(value: Double, onSet: (Double) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }) {
+            Text("%.1f ▾".format(value))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            com.leafdash.can.TireCheck.THRESHOLDS.forEach { b ->
+                DropdownMenuItem(text = { Text("%.1f".format(b)) }, onClick = { onSet(b); open = false })
             }
         }
     }

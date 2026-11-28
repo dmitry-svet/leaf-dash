@@ -108,6 +108,7 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onRes
             // back on the right: the screen opens with a swipe right and closes with a swipe left
             TextButton(onClick = onBack) { Text(t("Back ›", "Назад ›")) }
         }
+        TireAlertBanner(state)
         if (!tab) TopPlates(state, onResetTrip, wide = false)
         val e = state.loadEnergy
         val climate = listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw)

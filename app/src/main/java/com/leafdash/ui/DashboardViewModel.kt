@@ -65,6 +65,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     val streamEnabled: StateFlow<Boolean> = _streamEnabled.asStateFlow()
 
     private val _reserveKwh = MutableStateFlow(0.0)
+    private val _tireMinBar = MutableStateFlow(com.leafdash.can.TireCheck.DEFAULT_MIN_BAR)
+    val tireMinBar: StateFlow<Double> = _tireMinBar.asStateFlow()
     val reserveKwh: StateFlow<Double> = _reserveKwh.asStateFlow()
 
     private val streamer = com.leafdash.log.LogStreamer()
@@ -112,6 +114,8 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             _logUrl.value = tripStore.loadLogUrl()
             _streamEnabled.value = tripStore.loadStreamEnabled()
             _reserveKwh.value = tripStore.loadReserveKwh()
+            _tireMinBar.value = tripStore.loadTireMinBar()
+            _state.value = _state.value.copy(tireMinBar = _tireMinBar.value)
             _dataLogEnabled.value = tripStore.loadDataLogEnabled()
             Lang.uk = tripStore.loadLangUk()
             AppTheme.theme = tripStore.loadTheme()
@@ -130,6 +134,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         _reserveKwh.value = kwh
         _state.value = _state.value.copy(reserveKwh = kwh)
         viewModelScope.launch { tripStore.saveReserveKwh(kwh) }
+    }
+
+    /** Tire pressure alert threshold, bar; persisted. */
+    fun setTireMinBar(bar: Double) {
+        _tireMinBar.value = bar
+        _state.value = _state.value.copy(tireMinBar = bar)
+        viewModelScope.launch { tripStore.saveTireMinBar(bar) }
     }
 
     /** Enable/disable the diagnostic CSV log; persisted. */
@@ -195,7 +206,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             val p = LeafPoller(transport, active = active, logLine = ::logLine)
             p.setUnitsMiles(unitsMiles)
             p.fastLoad = fastLoad
-            p.watchBcm = watchBcm
             p.watchLights = AppTheme.auto == AutoMode.LIGHTS
             poller = p
 
@@ -229,6 +239,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                         odoMiles = unitsMiles,
                         avgKwhPer100 = t.avgKwhPer100,
                         reserveKwh = _reserveKwh.value,
+                        tireMinBar = _tireMinBar.value,
                         loadEnergy = t.loadEnergy,
                         loadHistory = loadHistory.points,
                     )
@@ -354,7 +365,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Volatile private var fastLoad = false
-    @Volatile private var watchBcm = false
     private var lastPowerCycle = -1
     private val loadHistory = com.leafdash.can.LoadHistory()
 
@@ -362,12 +372,6 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun setFastLoad(on: Boolean) {
         fastLoad = on
         poller?.fastLoad = on
-    }
-
-    /** Settings open: poller also reads BCM 0x60D (headlight bit hunt). */
-    fun setWatchBcm(on: Boolean) {
-        watchBcm = on
-        poller?.watchBcm = on
     }
 
     fun setStatsView(v: com.leafdash.stats.StatsView) {

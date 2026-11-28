@@ -65,6 +65,13 @@ class TripStore(private val context: Context) {
         context.tripDataStore.edit { it[RESERVE_KWH] = kwh }
     }
 
+    suspend fun loadTireMinBar(): Double =
+        context.tripDataStore.data.first()[TIRE_MIN_BAR] ?: com.leafdash.can.TireCheck.DEFAULT_MIN_BAR
+
+    suspend fun saveTireMinBar(bar: Double) {
+        context.tripDataStore.edit { it[TIRE_MIN_BAR] = bar }
+    }
+
     suspend fun loadDataLogEnabled(): Boolean =
         context.tripDataStore.data.first()[DATA_LOG_ENABLED] ?: true
 
@@ -189,6 +196,7 @@ class TripStore(private val context: Context) {
         val LOG_URL = stringPreferencesKey("log_url")
         val STREAM_ENABLED = booleanPreferencesKey("stream_enabled")
         val RESERVE_KWH = doublePreferencesKey("reserve_kwh")
+        val TIRE_MIN_BAR = doublePreferencesKey("tire_min_bar")
         val DATA_LOG_ENABLED = booleanPreferencesKey("data_log_enabled")
         val LAST_DEVICE = stringPreferencesKey("last_device")
         val LANG_UK = booleanPreferencesKey("lang_uk")
@@ -204,6 +212,6 @@ class TripStore(private val context: Context) {
         val LOAD_BARS = booleanPreferencesKey("load_bars")
         val SCHEMA_VER = intPreferencesKey("schema_ver")
         const val SCHEMA_CURRENT = 2
-        const val DEFAULT_RESERVE_KWH = 2.0
+        const val DEFAULT_RESERVE_KWH = 0.0
     }
 }

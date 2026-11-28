@@ -79,8 +79,8 @@ unchanged.
   (per-session odometer deltas; driving without the app is never counted).
   Range prediction is hidden (`--`) until a window has its first km, then uses
   that window's own measured efficiency (clamped 5–60 kWh/100), applied to
-  the remaining energy minus the "Unusable capacity" setting (default 2 kWh:
-  weak cells cut power well above 0% SOC on degraded packs). The "Usable"
+  the remaining energy minus the "Unusable capacity" setting (default 0 kWh;
+  on degraded packs weak cells cut power well above 0% SOC). The "Usable"
   tile shows that same reduced energy.
 - **Cell health tile** (next to SOC/Battery, same height): weakest cell voltage over
   min-max cell spread, from LBC group 2102; red when min < 3.15 V (turtle
@@ -134,11 +134,11 @@ unchanged.
   latest file to Telegram if installed, else the share sheet) and "Export
   data log CSV" (merges all sessions into one file).
 - **Tire pressure** (Settings): front and rear pairs in bar from the TPMS
-  broadcast `0x385`, refreshed every 5th poll cycle. The full-throttle
+  broadcast `0x385`, refreshed every 5th poll cycle. Alert threshold
+  1.9-2.5 bar (step 0.1, default 2.2): a red banner on the dashboard and
+  the load screen when a tire is below it or the known tires differ by
+  0.2 bar or more (compared at 0.01 bar, as shown). The full-throttle
   step test moved to the separate Leaf Battery Test app.
-- **CAN 0x60D (BCM)** (Settings): raw bytes plus bytes 0-1 in binary, read
-  each poll cycle while Settings is open (and always for the Headlights
-  auto theme).
 - **Diagnostic log** (Settings): per-cycle CSV (distance + energy fields:
   soc, gids, Ah, pack V/A, kWh, battery temp) to a local file, and a
   separate "Stream log to PC" checkbox that POSTs the same lines to a URL
@@ -219,7 +219,7 @@ Broadcast ids read via hardware filter in active mode (`LeafPoller`):
 | `0x284` | vehicle speed ((B4<<8\|B5)/100 km/h) |
 | `0x510` | ambient temp (B7*0.5 - 40 C) |
 | `0x385` | tire pressures FL/FR/RR/RL, B2..B5 / 4 PSI (timed read, every 5th cycle) |
-| `0x60D` | BCM lights (captured on the car): B0 bit 2 parking, B0 bit 1 low beam, B1 bit 3 high beam (timed read: Settings open or Headlights auto theme) |
+| `0x60D` | BCM lights (captured on the car): B0 bit 2 parking, B0 bit 1 low beam, B1 bit 3 high beam (timed read, Headlights auto theme only) |
 | `0x5B3` | gids ((B4&3)<<8 \| B5) - sent only in READY/driving; after 3 misses retried every 20th cycle |
 
 Broadcast reads that may never arrive use `Elm327.readBroadcastTimed` (1.5 s):

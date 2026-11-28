@@ -62,9 +62,6 @@ class LeafPoller(
     /** Load screen open: poll only pack A/V, speed and VCM power values. */
     @Volatile var fastLoad = false
 
-    /** Settings open: also read BCM 0x60D each cycle (headlight bit hunt). */
-    @Volatile var watchBcm = false
-
     /** Theme follows headlights: read 0x60D each cycle (every 5th in fast mode). */
     @Volatile var watchLights = false
 
@@ -213,7 +210,7 @@ class LeafPoller(
                 }
                 status.add("12V: ${leaf.aux12V?.let { "%.1f V".format(it) } ?: "no data"}")
 
-                if (watchBcm || watchLights) readBcm(captured)
+                if (watchLights) readBcm(captured)
 
                 // broadcasts that may not exist on every car: timed reads, every
                 // 5th cycle. Gids 0x5B3 comes and goes on this car (LeafSpy sees
@@ -410,13 +407,10 @@ class LeafPoller(
         }
     }
 
-    /** BCM 0x60D: raw bytes (Settings view) and the low-beam bit. */
+    /** BCM 0x60D: the low-beam bit. */
     private fun readBcm(captured: MutableMap<String, String>) {
         val bf = elm.readBroadcastTimed(bcmBroadcastId, BROADCAST_TIMEOUT_MS)
-        leaf = leaf.copy(
-            bcm60D = bf?.data?.joinToString(" ") { b -> "%02X".format(b) },
-            headlightsOn = bf?.let { CanDecoder.headlights(it) },
-        )
+        leaf = leaf.copy(headlightsOn = bf?.let { CanDecoder.headlights(it) })
         bf?.let { captured["bcm $bcmBroadcastId"] = it.data.joinToString("") { b -> "%02X".format(b) } }
     }
 

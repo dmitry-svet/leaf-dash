@@ -29,6 +29,8 @@ data class DashState(
     /** Unusable bottom-of-pack energy (kWh, user setting): subtracted from
      *  kWh remaining for range predictions (weak cells cut power early). */
     val reserveKwh: Double = 0.0,
+    /** Tire alert threshold, bar (user setting; see can.TireCheck). */
+    val tireMinBar: Double = com.leafdash.can.TireCheck.DEFAULT_MIN_BAR,
     /** Energy per load component since the last trip reset. */
     val loadEnergy: com.leafdash.trip.LoadEnergy = com.leafdash.trip.LoadEnergy(),
     /** Last 10 min of load samples (load screen background charts). */
