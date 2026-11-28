@@ -192,7 +192,7 @@ class MainActivity : ComponentActivity() {
                 onDispose { vm.setFastLoad(false) }
             }
             val bars by vm.loadBars.collectAsState()
-            com.leafdash.ui.LoadScreen(state = state, bars = bars, onBars = vm::setLoadBars, onBack = { showLoad = false })
+            com.leafdash.ui.LoadScreen(state = state, bars = bars, onBars = vm::setLoadBars, onResetTrip = vm::resetTrip, onBack = { showLoad = false })
             return
         }
 

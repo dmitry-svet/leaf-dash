@@ -2,6 +2,7 @@ package com.leafdash.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -67,7 +68,7 @@ private val OTH get() = AppTheme.pal.oth
  * measured update interval. Swipe left to go back.
  */
 @Composable
-fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBack: () -> Unit) {
+fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onResetTrip: () -> Unit, onBack: () -> Unit) {
     val load = Load.of(state.leaf)
     var lastMs by remember { mutableStateOf(0L) }
     var intervalMs by remember { mutableStateOf<Double?>(null) }
@@ -98,14 +99,16 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TextButton(onClick = onBack) { Text(t("‹ Back", "‹ Назад")) }
-            Text(t("Load", "Навантаження"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(t("Load", "Навантаження"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp))
             StyleIcon(bars) { onBars(!bars) }
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(8.dp).background(if (state.connected) REG else AppTheme.pal.danger, CircleShape))
             Text(intervalMs?.let { t("%.1f s", "%.1f с").format(it / 1000) } ?: "--", style = MaterialTheme.typography.labelMedium)
+            // back on the right: the screen opens with a swipe right and closes with a swipe left
+            TextButton(onClick = onBack) { Text(t("Back ›", "Назад ›")) }
         }
-        if (!tab) TopPlates(state)
+        if (!tab) TopPlates(state, onResetTrip, wide = false)
         val e = state.loadEnergy
         val climate = listOf(t("A/C", "Кондиціонер") to load.acKw, t("Heater", "Обігрів") to load.heaterKw)
         val other = listOf(t("Aux", "Допоміжні") to load.auxKw, t("Other", "Інше") to load.otherKw)
@@ -117,7 +120,7 @@ fun LoadScreen(state: DashState, bars: Boolean, onBars: (Boolean) -> Unit, onBac
             // landscape tablet: plates + motor on the left, climate over other on the right, no scroll
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1.2f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TopPlates(state)
+                    TopPlates(state, onResetTrip, wide = true)
                     if (bars) MotorBars(load, state, Modifier.fillMaxWidth().weight(1f), big = true)
                     else MotorDial(load, state, Modifier.fillMaxWidth().weight(1f), big = true)
                 }
@@ -172,27 +175,68 @@ private fun StyleIcon(bars: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Trip average consumption, remaining energy and range. */
+/**
+ * Trip distance (with the trip reset), trip average consumption, remaining
+ * energy and range. [wide] = tablet column: full labels, bigger values.
+ */
 @Composable
-private fun TopPlates(state: DashState) {
+private fun TopPlates(state: DashState, onResetTrip: () -> Unit, wide: Boolean) {
     val usable = state.leaf.kwhRemaining?.let { (it - state.reserveKwh).coerceAtLeast(0.0) }
     // range at this trip's consumption; before 1 km of trip, the lifetime average
     val refEff = (state.trip.kwhPer100?.takeIf { state.trip.km >= 1.0 }
         ?: state.lifetime.kwhPer100?.takeIf { state.lifetime.km >= 1.0 } ?: state.avgKwhPer100).coerceIn(5.0, 60.0)
+    val text = MaterialTheme.colorScheme.onSurface
+    val size = if (wide) 36 else 28
+    val km = state.trip.km
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Plate(t("Trip avg", "Витрата поїздки"), fmt(state.trip.kwhPer100, 1), t("kWh/100", "кВт·г/100"), MOT, Modifier.weight(1f))
-        Plate(t("Remaining", "Залишок"), fmt(usable, 1), t("kWh", "кВт·г"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
-        Plate(t("Range", "Запас"), fmt(usable?.let { it / refEff * 100 }, 0), t("km", "км"), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        Plate(t("Trip", "Поїздка"), if (km >= 100) "%.0f".format(km) else "%.1f".format(km), t("km", "км"), text, size,
+            Modifier.weight(1f), onResetTrip)
+        Plate(if (wide) t("Trip avg", "Витрата поїздки") else t("Avg", "Витрата"), fmt(state.trip.kwhPer100, 1),
+            t("kWh/100", "кВт·г/100"), MOT, size, Modifier.weight(1f))
+        Plate(t("Remaining", "Залишок"), fmt(usable, 1), t("kWh", "кВт·г"), text, size, Modifier.weight(1f))
+        Plate(t("Range", "Запас"), fmt(usable?.let { it / refEff * 100 }, 0), t("km", "км"), text, size, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun Plate(label: String, value: String, unit: String, color: Color, modifier: Modifier) {
+private fun Plate(label: String, value: String, unit: String, color: Color, size: Int, modifier: Modifier, onReset: (() -> Unit)? = null) {
     Card(modifier) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-            Text(value, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
-            Text(unit, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            Text(value, fontSize = size.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(unit, style = MaterialTheme.typography.labelMedium, maxLines = 1, modifier = Modifier.weight(1f))
+                if (onReset != null) ResetIcon(onReset)
+            }
+        }
+    }
+}
+
+/** Outlined circular-arrow button (no icon library in the app). */
+@Composable
+private fun ResetIcon(onClick: () -> Unit) {
+    val c = MaterialTheme.colorScheme.primary
+    Box(
+        Modifier.size(width = 30.dp, height = 24.dp)
+            .border(1.5.dp, c, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(14.dp)) {
+            val w = size.minDimension * 0.16f
+            val r = size.minDimension / 2 - w
+            val center = Offset(size.width / 2, size.height / 2)
+            drawArc(c, -60f, 300f, false, center - Offset(r, r), Size(2 * r, 2 * r), style = Stroke(w, cap = StrokeCap.Round))
+            // arrow head at the arc's open end (top)
+            val a = Math.toRadians(-60.0)
+            val tip = center + Offset((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat())
+            val h = size.minDimension * 0.32f
+            drawPath(Path().apply {
+                moveTo(tip.x + h * 0.6f, tip.y - h * 0.5f)
+                lineTo(tip.x - h * 0.6f, tip.y - h * 0.3f)
+                lineTo(tip.x + h * 0.1f, tip.y + h * 0.7f)
+                close()
+            }, c)
         }
     }
 }
